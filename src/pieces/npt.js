@@ -50,6 +50,28 @@ function placer(bout, position, entree) {
   return bout.groupe;
 }
 
+// Nervure de moulage le long de Z, posée sur un corps de rayon rCorps, à l'angle donné autour de l'axe.
+//   saillie : hauteur au-dessus du corps ; longueur : centrée sur z = 0
+function nervure(rCorps, saillie, longueur, angle) {
+  const largeur = rCorps * 0.19, r = Math.min(saillie, largeur) * 0.45;
+  // Section arrondie (en x : largeur, en y : hauteur), qui part sous la surface pour bien se fondre au corps.
+  const bas = -0.03, haut = saillie, w = largeur / 2;
+  const s = new THREE.Shape();
+  s.moveTo(-w, bas);
+  s.lineTo(-w, haut - r); s.quadraticCurveTo(-w, haut, -w + r, haut);
+  s.lineTo(w - r, haut); s.quadraticCurveTo(w, haut, w, haut - r);
+  s.lineTo(w, bas); s.closePath();
+  const geo = new THREE.ExtrudeGeometry(s, { depth: longueur, bevelEnabled: false, curveSegments: 6 });
+  geo.translate(0, 0, -longueur / 2);
+  const m = new THREE.Mesh(geo, MATERIAUX.fonte);
+  // La section est dessinée dans le plan XY avec la hauteur vers +Y : on la pose sur le corps.
+  const pivot = new THREE.Group();
+  m.position.y = rCorps;
+  pivot.add(m);
+  pivot.rotation.z = angle - Math.PI / 2;
+  return pivot;
+}
+
 // Manchon : axe Z, centré à l'origine.
 export function manchon(taille) {
   const L = RACCORDS_NPT.manchon.tailles[taille].longueur;
@@ -63,6 +85,9 @@ export function manchon(taille) {
   g.add(new THREE.Mesh(revolution([[a.corps, -zc], [a.corps, zc]], 72), MATERIAUX.fonte));
   const zb = L / 2 - a.profondeur;
   g.add(new THREE.Mesh(revolution([[a.alesage, zb], [a.alesage, -zb]], 72), MATERIAUX.fonte));
+
+  // Nervures de moulage : une de chaque côté, au plan de joint du moule, d'un bourrelet à l'autre.
+  for (const angle of [0, Math.PI]) g.add(nervure(a.corps, (FONTE_150[taille].bourrelet.d / 2 - a.corps) * 0.6, zc * 2 + 0.16, angle));
 
   g.userData = {
     ports: [

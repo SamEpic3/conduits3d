@@ -38,6 +38,10 @@ export function creerScene(canvas) {
     const { clientWidth: w, clientHeight: h } = canvas.parentElement;
     renderer.setSize(w, h, false);
     camera.aspect = w / h;
+    // Sur un écran large, on décale l'image vers la gauche pour qu'elle ne soit pas sous le panneau.
+    const panneau = document.querySelector('.panel');
+    const decal = panneau && w > 700 ? (panneau.offsetWidth + 12) / 2 : 0;
+    if (decal) camera.setViewOffset(w, h, decal, 0, w, h); else camera.clearViewOffset();
     camera.updateProjectionMatrix();
     demander();
   };
