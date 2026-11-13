@@ -9,7 +9,8 @@ En ligne (après activation de GitHub Pages) : https://samepic3.github.io/condui
 1. Choisis une pièce et clique **Ajouter** : la première pièce se place au centre.
 2. Les **anneaux orange** sont les sorties libres ; clique-en une (elle devient bleue) pour y brancher la pièce suivante.
    Les filets mâles entrent de la longueur d'engagement (1/2 po : 0,500 ; 3/4 po : 0,5625).
-3. Clique une pièce pour la **tourner** autour de son joint (45° ou 90°), la brancher par une **autre sortie** ou la **supprimer**.
+3. Clique une pièce pour la **tourner** autour de son joint, la brancher par une **autre sortie** ou la **supprimer**
+   (seule cette pièce est enlevée : ce qui était branché dessus reste en place, et se rebranche avec « Fermer une boucle »).
 4. **Mesure** (M) : clique deux points repères — centre d'un raccord (violet), face d'un raccord ou bout de tuyau (gris) —
    en distance directe ou en écart X, Y ou Z. Les mesures suivent le montage quand on le modifie.
 5. **Fermer une boucle** :

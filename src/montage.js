@@ -118,26 +118,51 @@ export class Montage {
   }
 
   // Supprime une pièce et tout ce qui est branché dessus.
+  // Supprime une seule pièce. Ce qui était branché dessus reste en place : ces pièces deviennent
+  // un morceau de montage détaché, fixé là où il était (on peut le rebrancher avec « Fermer une boucle »).
   supprimer(id) {
-    const aSupprimer = new Set([id]);
-    for (const p of this.pieces) if (p.lien && aSupprimer.has(p.lien.parent)) aSupprimer.add(p.id);
-    // Une pièce qui fermait une boucle sur une pièce supprimée perd seulement ce deuxième lien.
-    for (const p of this.pieces) if (p.fermeture && aSupprimer.has(p.fermeture.id)) delete p.fermeture;
-    this.pieces = this.pieces.filter(p => {
-      if (!aSupprimer.has(p.id)) return true;
-      const o = this.objets.get(p.id);
-      if (o) { this.groupe.remove(o); o.traverse(x => x.geometry?.dispose()); this.objets.delete(p.id); }
-      return false;
-    });
+    for (const p of this.pieces) {
+      if (p.lien?.parent === id) {
+        p.ancrage = this.objet(p).matrix.toArray();
+        p.angle = 0;
+        delete p.lien;
+        p.lien = null;
+      }
+      // Une pièce qui fermait une boucle sur la pièce supprimée perd seulement ce deuxième lien.
+      if (p.fermeture?.id === id) delete p.fermeture;
+    }
+    this.retirerObjet(id);
+    this.pieces = this.pieces.filter(p => p.id !== id);
+    this.placer();
   }
 
-  vider() { for (const p of [...this.pieces]) if (!p.lien) this.supprimer(p.id); this.seq = 0; }
+  retirerObjet(id) {
+    const o = this.objets.get(id);
+    if (o) { this.groupe.remove(o); o.traverse(x => x.geometry?.dispose()); this.objets.delete(id); }
+  }
+
+  // Nombre de pièces qui deviendraient détachées si on supprimait cette pièce.
+  enfants(id) { return this.pieces.filter(p => p.lien?.parent === id).length; }
+
+  vider() {
+    for (const p of this.pieces) this.retirerObjet(p.id);
+    this.pieces = [];
+    this.seq = 0;
+    this.placer();
+  }
 
   // Calcule la position de chaque pièce (les parents sont toujours avant leurs enfants).
   placer({ garnitures = true } = {}) {
     for (const p of this.pieces) {
       const o = this.objet(p);
-      if (!p.lien) {
+      if (!p.lien && p.ancrage) {
+        // Morceau détaché : fixé où il était ; la rotation se fait autour d'un axe vertical passant par la pièce.
+        const m0 = new THREE.Matrix4().fromArray(p.ancrage), p0 = new THREE.Vector3().setFromMatrixPosition(m0);
+        o.matrix.makeTranslation(p0.x, p0.y, p0.z)
+          .multiply(new THREE.Matrix4().makeRotationAxis(Y, THREE.MathUtils.degToRad(p.angle)))
+          .multiply(new THREE.Matrix4().makeTranslation(-p0.x, -p0.y, -p0.z))
+          .multiply(m0);
+      } else if (!p.lien) {
         o.matrix.makeRotationAxis(Y, THREE.MathUtils.degToRad(p.angle));
       } else {
         const parent = this.piece(p.lien.parent);
@@ -350,7 +375,7 @@ export class Montage {
   etat() { return JSON.stringify({ pieces: this.pieces, seq: this.seq }); }
   restaurer(json) {
     const e = JSON.parse(json);
-    for (const p of [...this.pieces]) if (!p.lien) this.supprimer(p.id);
+    for (const p of this.pieces) this.retirerObjet(p.id);
     this.pieces = e.pieces; this.seq = e.seq;
     this.placer();
   }

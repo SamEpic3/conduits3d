@@ -311,14 +311,14 @@ function supprimer() {
   if (!selection) return;
   const p = montage.piece(selection);
   memoriser();
-  const n = montage.pieces.length;
+  const detachees = montage.enfants(selection);
   montage.supprimer(selection);
-  const enfants = n - montage.pieces.length - 1;
   // On reprend la sortie libérée sur le parent.
   cible = p.lien ? { id: p.lien.parent, port: p.lien.port } : null;
   selection = p.lien ? p.lien.parent : null;
+  apresModification();
   rafraichir();
-  note(`${nomPiece(p)} supprimé${e_(p)}${enfants ? ` avec ${enfants} pièce(s) branchée(s) dessus` : ''}.`);
+  note(`${nomPiece(p)} supprimé${e_(p)}.${detachees ? ' Ce qui était branché dessus reste en place ; pour le rebrancher, utilise « Fermer une boucle ».' : ''}`);
 }
 
 function annuler() {
