@@ -1,22 +1,13 @@
 // Modèle du montage : un arbre de pièces reliées par leurs sorties (ports).
 // La première pièce est à l'origine ; chaque autre pièce est vissée sur une sortie libre d'une pièce déjà posée.
 import * as THREE from 'three';
-import { FILETS_NPT } from 'app/donnees/npt.js';
-import { CONSTRUCTEURS_NPT } from 'app/pieces/npt.js';
+import { CATALOGUE, compatibles, engagementJoint } from 'app/catalogue.js';
+import { MATERIAUX } from 'app/materiaux.js';
+import { TUBE_CUIVRE } from 'app/donnees/cuivre.js';
 
 const Y = new THREE.Vector3(0, 1, 0);
 
-// Deux sorties peuvent se raccorder si elles sont de même grosseur et de genres opposés.
-export function compatibles(a, b) {
-  if (a.taille !== b.taille) return `Les grosseurs ne correspondent pas (${a.taille} po et ${b.taille} po).`;
-  const ga = a.type.slice(-1), gb = b.type.slice(-1);
-  if (ga === 'f' && gb === 'f') return 'Deux bouts femelles ne se vissent pas ensemble : il faut un mamelon ou un bout de tuyau entre les deux.';
-  if (ga === 'm' && gb === 'm') return 'Deux bouts mâles ne se vissent pas ensemble : il faut un raccord (manchon, coude, té, union) entre les deux.';
-  return null;
-}
-
-// Longueur du bout mâle qui entre dans le raccord une fois serré à la clé.
-export const engagement = taille => FILETS_NPT[taille].engagement;
+export { compatibles };
 
 export class Montage {
   constructor(scene) {
@@ -25,6 +16,8 @@ export class Montage {
     this.pieces = [];          // {id, type, taille, longueur, angle, lien: null | {parent, port, portEnfant}}
     this.objets = new Map();   // id → THREE.Group
     this.seq = 0;
+    this.soudures = new THREE.Group();     // cordons de soudure aux joints de cuivre
+    this.groupe.add(this.soudures);
   }
 
   piece(id) { return this.pieces.find(p => p.id === id); }
@@ -33,7 +26,7 @@ export class Montage {
   objet(p) {
     let o = this.objets.get(p.id);
     if (!o) {
-      o = CONSTRUCTEURS_NPT[p.type](p.taille, p.longueur);
+      o = CATALOGUE[p.type].construire(p.taille, p.longueur);
       o.userData.idPiece = p.id;
       o.matrixAutoUpdate = false;
       this.objets.set(p.id, o);
@@ -80,7 +73,7 @@ export class Montage {
       const parent = this.piece(cible.id);
       const pp = this.ports(parent)[cible.port];
       // Première sortie compatible de la nouvelle pièce.
-      const essai = CONSTRUCTEURS_NPT[type](taille, longueur);
+      const essai = CATALOGUE[type].construire(taille, longueur);
       const ports = essai.userData.ports;
       const i = ports.findIndex(pt => !compatibles(pp, pt));
       essai.traverse(o => o.geometry?.dispose());
@@ -145,13 +138,32 @@ export class Montage {
         const q = new THREE.Quaternion().setFromUnitVectors(pe.sortie, cible.sortie.clone().negate());
         q.premultiply(new THREE.Quaternion().setFromAxisAngle(cible.sortie, THREE.MathUtils.degToRad(p.angle)));
         // Le bout mâle entre dans le raccord : les deux ports sont décalés de l'engagement.
-        const pos = cible.position.clone().addScaledVector(cible.sortie, -engagement(p.taille))
+        const pos = cible.position.clone().addScaledVector(cible.sortie, -engagementJoint(cible.type, cible.taille))
           .sub(pe.position.clone().applyQuaternion(q));
         o.matrix.compose(pos, q, new THREE.Vector3(1, 1, 1));
       }
       o.matrixWorldNeedsUpdate = true;
     }
+    this.dessinerSoudures();
     this.groupe.updateMatrixWorld(true);
+  }
+
+  // Un mince cordon de soudure à l'entrée de chaque douille où un tube est soudé.
+  dessinerSoudures() {
+    this.soudures.traverse(o => o.geometry?.dispose());
+    this.soudures.clear();
+    for (const p of this.pieces) {
+      if (!p.lien) continue;
+      const parent = this.piece(p.lien.parent);
+      const a = this.portMonde(parent, p.lien.port), b = this.portMonde(p, p.lien.portEnfant);
+      if (!a.type.startsWith('cu')) continue;
+      const face = a.type === 'cu-f' ? a : b;
+      const R = TUBE_CUIVRE[face.taille].D / 2;
+      const m = new THREE.Mesh(new THREE.TorusGeometry(R + 0.006, 0.011, 8, 56), MATERIAUX.soudure);
+      m.quaternion.setFromUnitVectors(new THREE.Vector3(0, 0, 1), face.sortie);
+      m.position.copy(face.position).addScaledVector(face.sortie, 0.004);
+      this.soudures.add(m);
+    }
   }
 
   // Points repères pour la mesure : centre de chaque raccord, faces et bouts de tuyau.
@@ -159,10 +171,10 @@ export class Montage {
     const pts = [];
     for (const p of this.pieces) {
       const o = this.objet(p);
-      if (p.type !== 'mamelon') pts.push({ p: new THREE.Vector3().applyMatrix4(o.matrix), genre: 'centre', cle: `${p.id}:c` });
+      if (CATALOGUE[p.type].centre) pts.push({ p: new THREE.Vector3().applyMatrix4(o.matrix), genre: 'centre', cle: `${p.id}:c` });
       this.ports(p).forEach((_, i) => {
         const pm = this.portMonde(p, i);
-        pts.push({ p: pm.position, genre: p.type === 'mamelon' ? 'bout' : 'face', cle: `${p.id}:${i}` });
+        pts.push({ p: pm.position, genre: pm.type.endsWith('-m') ? 'bout' : 'face', cle: `${p.id}:${i}` });
       });
     }
     return pts;

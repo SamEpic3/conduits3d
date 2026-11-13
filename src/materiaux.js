@@ -50,4 +50,12 @@ export const MATERIAUX = {
   filet: std({ color: 0x77797c, metalness: 0.85, roughness: 0.38 }),
   // Tuyau d'acier noir (calamine lisse).
   acierNoir: std({ color: 0x313438, metalness: 0.55, roughness: 0.5 }),
+  // Cuivre : tube et raccords corroyés (wrot), légèrement satiné.
+  cuivre: std({ color: 0xc8805a, metalness: 1.0, roughness: 0.33 }),
+  // Filets usinés dans le cuivre ou le laiton : plus brillants.
+  filetCuivre: std({ color: 0xd99a6e, metalness: 1.0, roughness: 0.25 }),
+  // Soudure à l'étain (cordon au joint).
+  soudure: std({ color: 0xb9bbb6, metalness: 1.0, roughness: 0.3 }),
+  // Laiton (écrou d'union).
+  laiton: std({ color: 0xb8975a, metalness: 1.0, roughness: 0.42 }),
 };

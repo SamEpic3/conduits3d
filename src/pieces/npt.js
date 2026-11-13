@@ -6,6 +6,7 @@ import { FILETS_NPT, FONTE_150, RACCORDS_NPT, hauteurFilet, CONICITE } from 'app
 import { revolution, arrondi } from 'app/geometrie/revolution.js';
 import { surfaceFiletee, bouchonFilet } from 'app/geometrie/filets.js';
 import { MATERIAUX } from 'app/materiaux.js';
+import { placer, port, cheminCoude, cylindrePerce, brancheTe, prisme } from 'app/geometrie/formes.js';
 
 const V = (x, y, z) => new THREE.Vector3(x, y, z);
 const SEG = 72;
@@ -13,7 +14,7 @@ const SEG = 72;
 // ---------------------------------------------------------------------------
 // Bout femelle : (bourrelet,) face, fraisure d'entrée et taraudage conique.
 // Repère local : face dans le plan z = 0, le filet entre vers +Z.
-export function boutFemelle(taille, { phase = 0, bourrelet = true, profondeur } = {}) {
+export function boutFemelle(taille, { phase = 0, bourrelet = true, profondeur, materiaux = { corps: MATERIAUX.fonte, filet: MATERIAUX.filet } } = {}) {
   const f = FILETS_NPT[taille], fo = FONTE_150[taille];
   const pas = 1 / f.tpi, h = hauteurFilet(f.tpi);
   const rFlanc = z => f.E1 / 2 - z * CONICITE / 2;       // plus étroit en s'enfonçant
@@ -33,154 +34,19 @@ export function boutFemelle(taille, { phase = 0, bourrelet = true, profondeur } 
       ...arrondi([rB, 0], [rB, lB], [rC, lB], 0.02),
       ...arrondi([rB, lB], [rC, lB], [rC, lB + conge * 2], conge),
       [rC, lB + conge * 2],
-    ], SEG), MATERIAUX.fonte));
+    ], SEG), materiaux.corps));
   } else {
-    g.add(new THREE.Mesh(revolution([[rMaj0, fraisure], [rFr, 0]], SEG), MATERIAUX.fonte));
+    g.add(new THREE.Mesh(revolution([[rMaj0, fraisure], [rFr, 0]], SEG), materiaux.corps));
   }
 
   // Taraudage (métal brut, plus pâle que la fonte).
   const opt = { z0: fraisure, z1: B, rFlanc, pas, hauteur: h, interieur: true, phase };
-  g.add(new THREE.Mesh(surfaceFiletee(opt), MATERIAUX.filet));
-  g.add(new THREE.Mesh(bouchonFilet({ ...opt, z: fraisure, R: rMaj0, sens: -1 }), MATERIAUX.filet));
+  g.add(new THREE.Mesh(surfaceFiletee(opt), materiaux.filet));
+  g.add(new THREE.Mesh(bouchonFilet({ ...opt, z: fraisure, R: rMaj0, sens: -1 }), materiaux.filet));
   const rFond = rFlanc(B) - h / 2;
-  g.add(new THREE.Mesh(bouchonFilet({ ...opt, z: B, R: rFond, sens: 1 }), MATERIAUX.filet));
+  g.add(new THREE.Mesh(bouchonFilet({ ...opt, z: B, R: rFond, sens: 1 }), materiaux.filet));
 
   return { groupe: g, corps: rC, debutCorps: lB + conge * 2, alesage: rFond, profondeur: B, rFraisure: rFr };
-}
-
-// Place un groupe construit sur l'axe Z : son origine à « position », son +Z vers « direction ».
-function placer(groupe, position, direction) {
-  groupe.quaternion.setFromUnitVectors(V(0, 0, 1), direction.clone().normalize());
-  groupe.position.copy(position);
-  return groupe;
-}
-
-const port = (position, sortie, type, taille) => ({ position, sortie: sortie.clone().normalize(), type, taille });
-
-// ---------------------------------------------------------------------------
-// Outils de géométrie
-
-// Arc de cercle de a vers b autour du centre c.
-class Arc extends THREE.Curve {
-  constructor(c, a, b) {
-    super();
-    this.c = c; this.u = a.clone().sub(c); this.v = b.clone().sub(c);
-    this.phi = this.u.angleTo(this.v);
-  }
-  getPoint(t, cible = new THREE.Vector3()) {
-    const s = Math.sin(this.phi);
-    return cible.copy(this.c)
-      .addScaledVector(this.u, Math.sin((1 - t) * this.phi) / s)
-      .addScaledVector(this.v, Math.sin(t * this.phi) / s);
-  }
-}
-
-// Chemin d'un coude : droite depuis la sortie 1, arc de rayon R tangent aux deux axes, droite jusqu'à la sortie 2.
-// d1 et d2 : directions (depuis le centre du raccord) des deux sorties.
-function cheminCoude(d1, d2, dist1, dist2, R) {
-  const deviation = Math.PI - d1.angleTo(d2);
-  const t = R * Math.tan(deviation / 2);
-  const T1 = d1.clone().multiplyScalar(t), T2 = d2.clone().multiplyScalar(t);
-  const C = d1.clone().add(d2).normalize().multiplyScalar(Math.hypot(t, R));
-  const ch = new THREE.CurvePath();
-  if (dist1 > t + 1e-4) ch.add(new THREE.LineCurve3(d1.clone().multiplyScalar(dist1), T1));
-  ch.add(new Arc(C, T1, T2));
-  if (dist2 > t + 1e-4) ch.add(new THREE.LineCurve3(T2, d2.clone().multiplyScalar(dist2)));
-  return ch;
-}
-
-// Cylindre le long de X (de x0 à x1), rayon r, percé en haut (+Y) d'un trou centré en x = 0
-// (pour le té). rTrou(θ) : rayon du trou selon l'angle autour de la branche (θ = 0 vers +X).
-function cylindrePerce(r, x0, x1, rTrou) {
-  const nx = Math.ceil((x1 - x0) / 0.008), nf = 120;
-  const pos = [], idx = [];
-  for (let i = 0; i <= nx; i++) for (let j = 0; j <= nf; j++) {
-    const x = x0 + (x1 - x0) * i / nx, f = 2 * Math.PI * j / nf;
-    pos.push(x, r * Math.cos(f), r * Math.sin(f));
-  }
-  for (let i = 0; i < nx; i++) for (let j = 0; j < nf; j++) {
-    const x = x0 + (x1 - x0) * (i + 0.5) / nx, f = 2 * Math.PI * (j + 0.5) / nf;
-    const y = r * Math.cos(f), z = r * Math.sin(f);
-    if (y > 0 && Math.hypot(x, z) < rTrou(Math.atan2(z, x))) continue;
-    const a = i * (nf + 1) + j, b = a + 1, c = a + nf + 1, d = c + 1;
-    idx.push(a, b, c, b, d, c);
-  }
-  const g = new THREE.BufferGeometry();
-  g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
-  g.setIndex(idx);
-  g.computeVertexNormals();
-  return g;
-}
-
-// Branche du té : cylindre le long de +Y, rayon r, qui part du cylindre horizontal de rayon R (axe X)
-// et monte jusqu'à y1. À la jonction, un congé de rayon conge(θ) évase la branche
-// (plein congé dans l'entrejambe, θ = 0 ou π ; rien sur les côtés, où les deux cylindres se rejoignent).
-// Renvoie aussi baseBranche(θ) : rayon de la branche au pied du congé, pour percer le cylindre horizontal.
-function brancheTe(r, R, y1, conge) {
-  const nf = 120, ny = 40;
-  const pos = [], idx = [];
-  const pied = f => {
-    const c = conge(f), rb = r + c, z = rb * Math.sin(f);
-    return { c, rb, y0: Math.sqrt(Math.max(0, R * R - z * z)) };
-  };
-  for (let j = 0; j <= nf; j++) {
-    const f = 2 * Math.PI * j / nf, { c, y0 } = pied(f);
-    for (let i = 0; i <= ny; i++) {
-      // Rangées serrées dans le congé, puis le reste de la branche.
-      const k = i / ny;
-      const y = k < 0.5 ? y0 + c * (k / 0.5) : y0 + c + (y1 - y0 - c) * ((k - 0.5) / 0.5);
-      const dy = y0 + c - y;
-      const rr = dy > 0 && c > 0 ? r + c - Math.sqrt(Math.max(0, c * c - dy * dy)) : r;
-      pos.push(rr * Math.cos(f), y, rr * Math.sin(f));
-    }
-  }
-  for (let j = 0; j < nf; j++) for (let i = 0; i < ny; i++) {
-    const a = j * (ny + 1) + i, b = a + 1, c = a + ny + 1, d = c + 1;
-    idx.push(a, c, b, b, c, d);
-  }
-  const g = new THREE.BufferGeometry();
-  g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
-  g.setIndex(idx);
-  g.computeVertexNormals();
-  return { geo: g, baseBranche: f => pied(f).rb };
-}
-
-// Prisme à n pans (hexagone, octogone) le long de Z, de z0 à z1, avec un chanfrein à 30°
-// à chaque bout (comme un écrou) et un trou central de rayon rInt. Un plat est tourné vers +Y.
-function prisme(n, surPlats, z0, z1, rInt) {
-  const a = surPlats / 2, rCoin = a / Math.cos(Math.PI / n);
-  const rBout = a * 0.94;                          // le chanfrein laisse un cercle sur la face
-  const lc = (rCoin - rBout) * Math.tan(Math.PI / 6);
-  const rPoly = f => {
-    const s = 2 * Math.PI / n;
-    const rel = ((f - Math.PI / 2) % s + s) % s - s / 2;
-    return a / Math.cos(rel);
-  };
-  const rCone = z => Math.min(rBout + (z - z0) / Math.tan(Math.PI / 6), rBout + (z1 - z) / Math.tan(Math.PI / 6));
-  const zs = [];
-  for (let k = 0; k <= 8; k++) zs.push(z0 + lc * k / 8);
-  for (let k = 8; k >= 0; k--) zs.push(z1 - lc * k / 8);
-  const nf = n * 24;
-  const pos = [];
-  const sommet = (f, z) => { const r = Math.min(rPoly(f), rCone(z)); return [r * Math.cos(f), r * Math.sin(f), z]; };
-  const tri = (p, q, s) => pos.push(...p, ...q, ...s);
-  for (let j = 0; j < nf; j++) {
-    const f0 = 2 * Math.PI * j / nf, f1 = 2 * Math.PI * (j + 1) / nf;
-    for (let i = 0; i < zs.length - 1; i++) {
-      const A = sommet(f0, zs[i]), B = sommet(f0, zs[i + 1]), C = sommet(f1, zs[i]), D = sommet(f1, zs[i + 1]);
-      tri(A, C, B); tri(B, C, D);
-    }
-    // faces des bouts (anneaux)
-    for (const [z, sens] of [[z0, -1], [z1, 1]]) {
-      const E = sommet(f0, z), F = sommet(f1, z);
-      const I = [rInt * Math.cos(f0), rInt * Math.sin(f0), z], J = [rInt * Math.cos(f1), rInt * Math.sin(f1), z];
-      if (sens > 0) { tri(I, E, J); tri(E, F, J); } else { tri(I, J, E); tri(E, J, F); }
-    }
-  }
-  const g = new THREE.BufferGeometry();
-  g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
-  g.computeVertexNormals();
-  return g;
 }
 
 // Nervure de moulage le long de Z, posée sur un corps de rayon rCorps, à l'angle donné autour de l'axe.
@@ -200,6 +66,24 @@ function nervure(rCorps, saillie, longueur, angle) {
   pivot.add(m);
   pivot.rotation.z = angle - Math.PI / 2;
   return pivot;
+}
+
+// Bout mâle : filet conique au bout d'un tuyau, avec les filets incomplets à la fin du filetage.
+// Repère local : bout du tuyau dans le plan z = 0, le tuyau s'étend vers +Z.
+// longueurFiletee : longueur filetée (par défaut L4) ; rInt : rayon intérieur (face du bout).
+export function boutMale(taille, { longueurFiletee, phase = 0, rInt, materiau = MATERIAUX.filet } = {}) {
+  const f = FILETS_NPT[taille];
+  const pas = 1 / f.tpi, h = hauteurFilet(f.tpi), R = f.D / 2;
+  const lf = longueurFiletee ?? f.L4;
+  const fin = Math.min(f.L4, lf), debutEvan = Math.min(f.L2, fin * 0.75);
+  const g = new THREE.Group();
+  const opt = {
+    z0: 0, z1: lf, rFlanc: zz => f.E0 / 2 + zz * CONICITE / 2, pas, hauteur: h, phase,
+    rMax: R, evanouissement: [debutEvan, fin],
+  };
+  g.add(new THREE.Mesh(surfaceFiletee(opt), materiau));
+  g.add(new THREE.Mesh(bouchonFilet({ ...opt, z: 0, R: rInt ?? f.diInt / 2, sens: -1 }), materiau));
+  return g;
 }
 
 // ---------------------------------------------------------------------------
@@ -308,16 +192,8 @@ export function mamelon(taille, longueur) {
   const pas = 1 / f.tpi, h = hauteurFilet(f.tpi), R = f.D / 2, ri = f.diInt / 2;
   const g = new THREE.Group(), axe = new THREE.Group();
   const lf = Math.min(f.L4, L / 2);                       // un mamelon court est fileté d'un bout à l'autre
-  for (const [z, dir, phase] of [[-L / 2, 1, 0], [L / 2, -1, 2.4]]) {
-    const bout = new THREE.Group();
-    const opt = {
-      z0: 0, z1: lf, rFlanc: zz => f.E0 / 2 + zz * CONICITE / 2, pas, hauteur: h, phase,
-      rMax: R, evanouissement: [f.L2, f.L4],
-    };
-    bout.add(new THREE.Mesh(surfaceFiletee(opt), MATERIAUX.filet));
-    bout.add(new THREE.Mesh(bouchonFilet({ ...opt, z: 0, R: ri, sens: -1 }), MATERIAUX.filet));
-    axe.add(placer(bout, V(0, 0, z), V(0, 0, dir)));
-  }
+  for (const [z, dir, phase] of [[-L / 2, 1, 0], [L / 2, -1, 2.4]])
+    axe.add(placer(boutMale(taille, { longueurFiletee: lf, phase }), V(0, 0, z), V(0, 0, dir)));
   if (L / 2 > lf + 1e-4) axe.add(new THREE.Mesh(revolution([[R, -L / 2 + lf], [R, L / 2 - lf]], SEG), MATERIAUX.acierNoir));
   axe.add(new THREE.Mesh(revolution([[ri, L / 2], [ri, -L / 2]], SEG), MATERIAUX.acierNoir));
   axe.rotation.y = Math.PI / 2;

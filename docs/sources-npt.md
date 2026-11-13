@@ -26,3 +26,11 @@ Filets NPT : 14 filets/po pour 1/2 et 3/4, conicité 1:16, filet à 60°.
 ## Mamelons (tuyau schedule 40)
 - Ø int. 0,622 (1/2) et 0,824 (3/4) ; filetage L4 = 0,7815 / 0,7935, dont L2 = 0,5337 / 0,5457 de filets complets
 - Mamelon serré (close) : 1 1/8 (1/2), 1 3/8 (3/4)
+
+# Cuivre à souder (catalogue NIBCO fourni, wrot)
+- Tube type L : Ø ext. 0,625 / 0,875 ; paroi 0,040 / 0,045 ; douille 0,50 / 0,75 de profondeur (ASME B16.22)
+- Coude 90° (607) centre à l'arrêt 11/32 / 1/2 ; coude 45° (606) 9/32 / 11/32 ; té (611) 11/32 / 7/16
+- Manchon à arrêt roulé (600-RS) : 3/32 entre les arrêts ; union (633-W) : 7/16 entre les arrêts
+- Capuchon (617) : fond de 1/8 / 3/16 ; adaptateur C × F (603) : 27/32 / 29/32 de l'arrêt à la face ;
+  adaptateur C × M (604) : filetage de 5/8 / 13/16 après l'hexagone
+- Estimés (à confirmer) : grosseur des hexagones des adaptateurs et de l'écrou d'union

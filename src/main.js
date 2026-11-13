@@ -1,8 +1,10 @@
 // Étape 2 : montage de raccords NPT, avec l'outil de mesure.
 import * as THREE from 'three';
 import { creerScene } from 'app/scene.js';
-import { RACCORDS_NPT, FILETS_NPT } from 'app/donnees/npt.js';
-import { Montage, engagement } from 'app/montage.js';
+import { FILETS_NPT } from 'app/donnees/npt.js';
+import { TUBE_CUIVRE } from 'app/donnees/cuivre.js';
+import { CATALOGUE } from 'app/catalogue.js';
+import { Montage } from 'app/montage.js';
 import { Mesures, NOMS_MODES, longueurMesure, fmtPo } from 'app/mesure.js';
 
 const $ = id => document.getElementById(id);
@@ -23,10 +25,10 @@ function note(texte, erreur = false) {
   $('note').classList.toggle('erreur', erreur);
 }
 
-const nomPiece = p => `${RACCORDS_NPT[p.type].nom}${p.type === 'mamelon' ? ` ${fraction(p.longueur)} po` : ''} ${p.taille} po`;
+const nomPiece = p => `${CATALOGUE[p.type].nom}${CATALOGUE[p.type].longueur ? ` ${fraction(p.longueur)} po` : ''} (${p.taille} po)`;
 
 // Accord : « ajouté » ou « ajoutée » selon la pièce.
-const e_ = p => RACCORDS_NPT[p.type].feminin ? 'e' : '';
+const e_ = p => CATALOGUE[p.type].feminin ? 'e' : '';
 
 // Première sortie libre d'une pièce, ou null.
 function sortieLibre(id) {
@@ -68,7 +70,7 @@ function dessinerAnneaux() {
   if (outil !== 'main') return;
   for (const s of montage.sortiesLibres()) {
     const choisi = cible && cible.id === s.id && cible.port === s.port;
-    const r = FILETS_NPT[s.taille].D / 2 + 0.1;
+    const r = (s.type.startsWith('cu') ? TUBE_CUIVRE[s.taille].D : FILETS_NPT[s.taille].D) / 2 + 0.1;
     const g = new THREE.Group();
     g.add(new THREE.Mesh(new THREE.TorusGeometry(r, 0.022, 10, 48), choisi ? matAnneauChoisi : matAnneau));
     g.add(new THREE.Mesh(new THREE.CircleGeometry(r, 40), choisi ? matDisqueChoisi : matDisque));
@@ -101,11 +103,15 @@ function surligner(id) {
 // ---------------------------------------------------------------------------
 // Mise à jour générale
 
+// Oublie la sortie choisie si elle n'existe plus ou n'est plus libre.
+function verifierCible() {
+  if (!cible) return;
+  const p = montage.piece(cible.id);
+  if (!p || montage.occupees(p).has(cible.port)) cible = null;
+}
+
 function rafraichir() {
-  if (cible) {
-    const p = montage.piece(cible.id);
-    if (!p || montage.occupees(p).has(cible.port)) cible = null;
-  }
+  verifierCible();
   if (selection && !montage.piece(selection)) selection = null;
   dessinerAnneaux();
   surligner(selection);
@@ -115,9 +121,9 @@ function rafraichir() {
 }
 
 function majPanneau() {
-  const type = $('selPiece').value;
-  $('lblLongueur').hidden = type !== 'mamelon';
-  $('longueursStd').innerHTML = RACCORDS_NPT.mamelon.tailles[$('selTaille').value].longueurs
+  const entree = CATALOGUE[$('selPiece').value];
+  $('lblLongueur').hidden = !entree.longueur;
+  if (entree.longueur) $('longueursStd').innerHTML = entree.longueur.suggestions($('selTaille').value)
     .map(l => `<option value="${fraction(l)}">`).join('');
 
   const vide = !montage.pieces.length;
@@ -132,16 +138,15 @@ function majPanneau() {
   const p = selection && montage.piece(selection);
   $('secPiece').hidden = !p;
   if (p) {
-    const r = RACCORDS_NPT[p.type], d = r.tailles[p.taille];
+    const e = CATALOGUE[p.type];
     const par = p.lien && montage.piece(p.lien.parent);
+    const lignes = e.fiche(p.taille, p.longueur);
+    if (e.famille === 'npt') lignes.push(['Engagement des filets', FILETS_NPT[p.taille].engagement]);
     $('fiche').innerHTML = `
       <h2>${nomPiece(p)}</h2>
-      <p class="muted">${r.nomAnglais} · ${p.type === 'mamelon' ? 'acier noir, schedule 40' : 'fonte malléable noire, classe 150'}</p>
+      <p class="muted">${e.nomAnglais} · ${e.matiere}</p>
       <dl>
-        ${p.type === 'mamelon' ? `<dt>Longueur de coupe</dt><dd>${fmtPo(p.longueur)}</dd>` : ''}
-        ${d.centreFace ? `<dt>Centre à face</dt><dd>${fmtPo(d.centreFace)}</dd>` : ''}
-        ${d.longueur ? `<dt>Longueur</dt><dd>${fmtPo(d.longueur)}</dd>` : ''}
-        <dt>Engagement</dt><dd>${fmtPo(engagement(p.taille))}</dd>
+        ${lignes.map(([k, v]) => `<dt>${k}</dt><dd>${fmtPo(v)}</dd>`).join('')}
         ${par ? `<dt>Branchée sur</dt><dd>${nomPiece(par)}</dd>` : '<dt>Position</dt><dd>première pièce</dd>'}
       </dl>`;
     const autres = montage.ports(p).length - 1 - [...montage.occupees(p)].filter(i => i !== p.lien?.portEnfant).length;
@@ -166,13 +171,17 @@ function memoriser() {
 function ajouter() {
   const type = $('selPiece').value, taille = $('selTaille').value;
   let longueur;
-  if (type === 'mamelon') {
+  const entree = CATALOGUE[type];
+  if (entree.longueur) {
     longueur = lireLongueur($('txtLongueur').value);
-    const min = RACCORDS_NPT.mamelon.tailles[taille].longueurs[0];
+    const min = entree.longueur.min(taille);
     if (!(longueur > 0)) return note('Longueur invalide. Exemples : 3, 3,5 ou 3 1/2.', true);
-    if (longueur < min - 1e-6) return note(`Le plus court mamelon ${taille} po est le mamelon serré de ${fraction(min)} po.`, true);
+    if (longueur < min - 1e-6) return note(type === 'mamelon'
+      ? `Le plus court mamelon ${taille} po est le mamelon serré de ${fraction(min)} po.`
+      : `Longueur trop courte (minimum ${fraction(min)} po).`, true);
     if (longueur > 120) return note('Longueur trop grande (maximum 120 po).', true);
   }
+  verifierCible();
   memoriser();
   const premier = !montage.pieces.length;
   const r = montage.ajouter({ type, taille, longueur }, cible);
@@ -275,7 +284,7 @@ $('cv').addEventListener('pointerup', e => {
   const plan = vue.renderer.clippingPlanes[0];
   const surPiece = lancer.intersectObjects(montage.groupe.children, true)
     .find(i => !plan || plan.distanceToPoint(i.point) >= 0);
-  selection = surPiece ? ancetre(surPiece.object, 'idPiece').userData.idPiece : null;
+  selection = surPiece ? ancetre(surPiece.object, 'idPiece')?.userData.idPiece ?? null : null;
   rafraichir();
   if (selection) { const p = montage.piece(selection); note(`${nomPiece(p)} choisi${e_(p)}.`); }
 });
