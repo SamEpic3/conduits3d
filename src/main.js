@@ -1,68 +1,331 @@
-// Étape 1 : visionneuse d'une pièce, pour valider les modèles avant de construire les montages.
+// Étape 2 : montage de raccords NPT, avec l'outil de mesure.
 import * as THREE from 'three';
 import { creerScene } from 'app/scene.js';
-import { RACCORDS_NPT, FILETS_NPT, FONTE_150 } from 'app/donnees/npt.js';
-import { CONSTRUCTEURS_NPT } from 'app/pieces/npt.js';
+import { RACCORDS_NPT, FILETS_NPT } from 'app/donnees/npt.js';
+import { Montage, engagement } from 'app/montage.js';
+import { Mesures, NOMS_MODES, longueurMesure, fmtPo } from 'app/mesure.js';
 
 const $ = id => document.getElementById(id);
 const vue = creerScene($('cv'));
-let piece = null;
+const montage = new Montage(vue.scene);
+const mesures = new Mesures(vue, $('etiquettes'));
 
-const fmt = v => `${v.toFixed(3).replace('.', ',')} po`;
-// Fraction lisible : 1.125 → « 1 1/8 »
-const frac = v => {
-  const e = Math.floor(v), r = Math.round((v - e) * 16);
+let outil = 'main';
+let cible = null;         // sortie choisie {id, port}
+let selection = null;     // id de la pièce choisie
+const historique = [];
+
+// ---------------------------------------------------------------------------
+// Messages
+
+function note(texte, erreur = false) {
+  $('note').textContent = texte;
+  $('note').classList.toggle('erreur', erreur);
+}
+
+const nomPiece = p => `${RACCORDS_NPT[p.type].nom}${p.type === 'mamelon' ? ` ${fraction(p.longueur)} po` : ''} ${p.taille} po`;
+
+// Accord : « ajouté » ou « ajoutée » selon la pièce.
+const e_ = p => RACCORDS_NPT[p.type].feminin ? 'e' : '';
+
+// Première sortie libre d'une pièce, ou null.
+function sortieLibre(id) {
+  const p = montage.piece(id), occ = montage.occupees(p);
+  const i = montage.ports(p).findIndex((_, k) => !occ.has(k));
+  return i >= 0 ? { id, port: i } : null;
+}
+
+// 1.125 → « 1 1/8 »
+function fraction(v) {
+  const e = Math.floor(v + 1e-9), r = Math.round((v - e) * 16);
   if (!r) return `${e}`;
+  if (r === 16) return `${e + 1}`;
   let n = r, d = 16; while (n % 2 === 0) { n /= 2; d /= 2; }
   return e ? `${e} ${n}/${d}` : `${n}/${d}`;
+}
+
+// « 3 », « 3,5 », « 3.5 », « 3 1/2 », « 1/2 » → nombre (ou NaN)
+function lireLongueur(txt) {
+  const t = txt.trim().replace(',', '.').replace(/["po]+$/i, '').trim();
+  const m = t.match(/^(\d+(?:\.\d+)?)?\s*(?:(\d+)\s*\/\s*(\d+))?$/);
+  if (!m || (!m[1] && !m[2])) return NaN;
+  return (m[1] ? parseFloat(m[1]) : 0) + (m[2] ? parseInt(m[2]) / parseInt(m[3]) : 0);
+}
+
+// ---------------------------------------------------------------------------
+// Anneaux sur les sorties libres
+
+const anneaux = new THREE.Group();
+vue.scene.add(anneaux);
+const matAnneau = new THREE.MeshBasicMaterial({ color: 0xd9782e });
+const matAnneauChoisi = new THREE.MeshBasicMaterial({ color: 0x1f56c4 });
+const matDisque = new THREE.MeshBasicMaterial({ color: 0xd9782e, transparent: true, opacity: 0.22, side: THREE.DoubleSide, depthWrite: false });
+const matDisqueChoisi = new THREE.MeshBasicMaterial({ color: 0x1f56c4, transparent: true, opacity: 0.35, side: THREE.DoubleSide, depthWrite: false });
+
+function dessinerAnneaux() {
+  anneaux.traverse(o => o.geometry?.dispose());
+  anneaux.clear();
+  if (outil !== 'main') return;
+  for (const s of montage.sortiesLibres()) {
+    const choisi = cible && cible.id === s.id && cible.port === s.port;
+    const r = FILETS_NPT[s.taille].D / 2 + 0.1;
+    const g = new THREE.Group();
+    g.add(new THREE.Mesh(new THREE.TorusGeometry(r, 0.022, 10, 48), choisi ? matAnneauChoisi : matAnneau));
+    g.add(new THREE.Mesh(new THREE.CircleGeometry(r, 40), choisi ? matDisqueChoisi : matDisque));
+    g.quaternion.setFromUnitVectors(new THREE.Vector3(0, 0, 1), s.sortie);
+    g.position.copy(s.position).addScaledVector(s.sortie, 0.04);
+    g.userData.sortie = { id: s.id, port: s.port };
+    anneaux.add(g);
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Surbrillance de la pièce choisie
+
+const originaux = new Map();
+function surligner(id) {
+  for (const [m, mat] of originaux) { m.material.dispose(); m.material = mat; }
+  originaux.clear();
+  const o = id && montage.objets.get(id);
+  if (!o) return;
+  o.traverse(m => {
+    if (!m.isMesh) return;
+    originaux.set(m, m.material);
+    const c = m.material.clone();
+    c.onBeforeCompile = m.material.onBeforeCompile;
+    c.emissive = new THREE.Color(0x3d2409);
+    m.material = c;
+  });
+}
+
+// ---------------------------------------------------------------------------
+// Mise à jour générale
+
+function rafraichir() {
+  if (cible) {
+    const p = montage.piece(cible.id);
+    if (!p || montage.occupees(p).has(cible.port)) cible = null;
+  }
+  if (selection && !montage.piece(selection)) selection = null;
+  dessinerAnneaux();
+  surligner(selection);
+  mesures.actualiser(montage.pointsReperes(), outil === 'mesure');
+  majPanneau();
+  vue.demander();
+}
+
+function majPanneau() {
+  const type = $('selPiece').value;
+  $('lblLongueur').hidden = type !== 'mamelon';
+  $('longueursStd').innerHTML = RACCORDS_NPT.mamelon.tailles[$('selTaille').value].longueurs
+    .map(l => `<option value="${fraction(l)}">`).join('');
+
+  const vide = !montage.pieces.length;
+  $('indice').textContent = vide
+    ? 'La première pièce sera placée au centre.'
+    : cible
+      ? `Sera branchée sur la sortie en bleu (${nomPiece(montage.piece(cible.id))}).`
+      : 'Clique sur une sortie (anneau orange) pour choisir où brancher la pièce.';
+  $('btnAjouter').disabled = !vide && !cible;
+
+  // Fiche de la pièce choisie
+  const p = selection && montage.piece(selection);
+  $('secPiece').hidden = !p;
+  if (p) {
+    const r = RACCORDS_NPT[p.type], d = r.tailles[p.taille];
+    const par = p.lien && montage.piece(p.lien.parent);
+    $('fiche').innerHTML = `
+      <h2>${nomPiece(p)}</h2>
+      <p class="muted">${r.nomAnglais} · ${p.type === 'mamelon' ? 'acier noir, schedule 40' : 'fonte malléable noire, classe 150'}</p>
+      <dl>
+        ${p.type === 'mamelon' ? `<dt>Longueur de coupe</dt><dd>${fmtPo(p.longueur)}</dd>` : ''}
+        ${d.centreFace ? `<dt>Centre à face</dt><dd>${fmtPo(d.centreFace)}</dd>` : ''}
+        ${d.longueur ? `<dt>Longueur</dt><dd>${fmtPo(d.longueur)}</dd>` : ''}
+        <dt>Engagement</dt><dd>${fmtPo(engagement(p.taille))}</dd>
+        ${par ? `<dt>Branchée sur</dt><dd>${nomPiece(par)}</dd>` : '<dt>Position</dt><dd>première pièce</dd>'}
+      </dl>`;
+    const autres = montage.ports(p).length - 1 - [...montage.occupees(p)].filter(i => i !== p.lien?.portEnfant).length;
+    $('btnSortie').disabled = !p.lien || autres < 1;
+  }
+
+  // Liste des mesures
+  $('listeMesures').innerHTML = mesures.liste.map(m => `<li>${NOMS_MODES[m.mode]} : ${fmtPo(longueurMesure(m))}</li>`).join('');
+  $('mesVide').hidden = mesures.liste.length > 0;
+  $('btnEffMesures').disabled = !mesures.liste.length;
+  $('btnAnnuler').disabled = !historique.length;
+}
+
+function memoriser() {
+  historique.push({ etat: montage.etat(), cible, selection });
+  if (historique.length > 100) historique.shift();
+}
+
+// ---------------------------------------------------------------------------
+// Actions
+
+function ajouter() {
+  const type = $('selPiece').value, taille = $('selTaille').value;
+  let longueur;
+  if (type === 'mamelon') {
+    longueur = lireLongueur($('txtLongueur').value);
+    const min = RACCORDS_NPT.mamelon.tailles[taille].longueurs[0];
+    if (!(longueur > 0)) return note('Longueur invalide. Exemples : 3, 3,5 ou 3 1/2.', true);
+    if (longueur < min - 1e-6) return note(`Le plus court mamelon ${taille} po est le mamelon serré de ${fraction(min)} po.`, true);
+    if (longueur > 120) return note('Longueur trop grande (maximum 120 po).', true);
+  }
+  memoriser();
+  const premier = !montage.pieces.length;
+  const r = montage.ajouter({ type, taille, longueur }, cible);
+  if (r.erreur) { historique.pop(); return note(r.erreur, true); }
+  selection = r.id;
+  // On choisit d'emblée une sortie libre de la nouvelle pièce pour continuer le montage.
+  const p = montage.piece(r.id);
+  cible = sortieLibre(r.id);
+  rafraichir();
+  vue.cadrer(montage.groupe);
+  note(premier
+    ? `${nomPiece(p)} placé${e_(p)}. Les anneaux orange sont les sorties libres ; la bleue est choisie pour la prochaine pièce.`
+    : `${nomPiece(p)} ajouté${e_(p)}. Au besoin, tourne la pièce autour du joint avec ↺ ↻.`);
+}
+
+function tourner(deg) {
+  if (!selection) return;
+  memoriser();
+  montage.tourner(selection, deg);
+  rafraichir();
+}
+
+function changerSortie() {
+  if (!selection) return;
+  memoriser();
+  if (!montage.changerSortie(selection)) { historique.pop(); return note('Cette pièce n\'a pas d\'autre sortie compatible libre.', true); }
+  cible = sortieLibre(selection);
+  rafraichir();
+  note('La pièce est maintenant branchée par une autre de ses sorties.');
+}
+
+function supprimer() {
+  if (!selection) return;
+  const p = montage.piece(selection);
+  memoriser();
+  const n = montage.pieces.length;
+  montage.supprimer(selection);
+  const enfants = n - montage.pieces.length - 1;
+  // On reprend la sortie libérée sur le parent.
+  cible = p.lien ? { id: p.lien.parent, port: p.lien.port } : null;
+  selection = p.lien ? p.lien.parent : null;
+  rafraichir();
+  note(`${nomPiece(p)} supprimé${e_(p)}${enfants ? ` avec ${enfants} pièce(s) branchée(s) dessus` : ''}.`);
+}
+
+function annuler() {
+  const h = historique.pop();
+  if (!h) return;
+  montage.restaurer(h.etat);
+  cible = h.cible; selection = h.selection;
+  rafraichir();
+  note('Dernière action annulée.');
+}
+
+function choisirOutil(o) {
+  outil = o;
+  document.querySelectorAll('[data-outil]').forEach(b => b.classList.toggle('on', b.dataset.outil === o));
+  $('modes').hidden = o !== 'mesure';
+  $('stage').classList.toggle('outil-mesure', o === 'mesure');
+  if (o !== 'mesure') mesures.apercu = null;
+  rafraichir();
+  note(o === 'mesure'
+    ? 'Mesure : clique deux points repères. Violet = centre d\'un raccord ; gris = face d\'un raccord ou bout de tuyau.'
+    : 'Sélection : clique une sortie (anneau) pour y brancher la prochaine pièce, ou une pièce pour la tourner ou la supprimer.');
+}
+
+// ---------------------------------------------------------------------------
+// Souris
+
+const lancer = new THREE.Raycaster();
+function viser(e) {
+  const r = vue.renderer.domElement.getBoundingClientRect();
+  const ndc = new THREE.Vector2((e.clientX - r.left) / r.width * 2 - 1, -(e.clientY - r.top) / r.height * 2 + 1);
+  lancer.setFromCamera(ndc, vue.camera);
+  return { x: e.clientX - r.left, y: e.clientY - r.top };
+}
+const ancetre = (o, cle) => { while (o && o.userData[cle] === undefined) o = o.parent; return o; };
+
+let appui = null;
+$('cv').addEventListener('pointerdown', e => { appui = { x: e.clientX, y: e.clientY }; });
+$('cv').addEventListener('pointerup', e => {
+  if (!appui || Math.hypot(e.clientX - appui.x, e.clientY - appui.y) > 5) { appui = null; return; }
+  appui = null;
+  const pt = viser(e);
+  if (outil === 'mesure') {
+    const r = mesures.clic(pt.x, pt.y);
+    note(r.message, r.erreur);
+    if (r.ajoutee) majPanneau();
+    return;
+  }
+  const surAnneau = lancer.intersectObjects(anneaux.children, true)[0];
+  if (surAnneau) {
+    const s = ancetre(surAnneau.object, 'sortie').userData.sortie;
+    cible = s; selection = s.id;
+    $('selTaille').value = montage.ports(montage.piece(s.id))[s.port].taille;
+    rafraichir();
+    note('Sortie choisie. Choisis la pièce à brancher, puis clique « Ajouter ».');
+    return;
+  }
+  const plan = vue.renderer.clippingPlanes[0];
+  const surPiece = lancer.intersectObjects(montage.groupe.children, true)
+    .find(i => !plan || plan.distanceToPoint(i.point) >= 0);
+  selection = surPiece ? ancetre(surPiece.object, 'idPiece').userData.idPiece : null;
+  rafraichir();
+  if (selection) { const p = montage.piece(selection); note(`${nomPiece(p)} choisi${e_(p)}.`); }
+});
+$('cv').addEventListener('pointermove', e => {
+  if (outil !== 'mesure' || !mesures.apercu) return;
+  const pt = viser(e);
+  mesures.survol(pt.x, pt.y);
+});
+
+// ---------------------------------------------------------------------------
+// Boutons et clavier
+
+$('btnAjouter').onclick = ajouter;
+$('selPiece').onchange = majPanneau;
+$('selTaille').onchange = majPanneau;
+document.querySelectorAll('[data-tourner]').forEach(b => b.onclick = () => tourner(Number(b.dataset.tourner)));
+$('btnSortie').onclick = changerSortie;
+$('btnSupprimer').onclick = supprimer;
+$('btnAnnuler').onclick = annuler;
+document.querySelectorAll('[data-outil]').forEach(b => b.onclick = () => choisirOutil(b.dataset.outil));
+document.querySelectorAll('[data-mode]').forEach(b => b.onclick = () => {
+  mesures.mode = b.dataset.mode;
+  if (mesures.apercu) mesures.apercu.mode = b.dataset.mode;
+  document.querySelectorAll('[data-mode]').forEach(x => x.classList.toggle('on', x === b));
+  mesures.dessiner(outil === 'mesure');
+});
+document.querySelectorAll('[data-vue]').forEach(b => b.onclick = () => vue.vue(b.dataset.vue, montage.groupe));
+let coupe = false;
+$('btnCoupe').onclick = () => { coupe = !coupe; vue.coupe(coupe); $('btnCoupe').classList.toggle('on', coupe); };
+$('btnEffMesures').onclick = () => { mesures.effacer(); rafraichir(); note('Mesures effacées.'); };
+$('btnToutEffacer').onclick = () => {
+  if (!montage.pieces.length) return;
+  memoriser();
+  montage.vider(); mesures.effacer(); cible = null; selection = null;
+  rafraichir();
+  note('Nouveau montage. (Annuler pour revenir en arrière.)');
 };
 
-function majLongueurs() {
-  const type = $('selPiece').value, taille = $('selTaille').value;
-  $('lblLongueur').hidden = type !== 'mamelon';
-  if (type !== 'mamelon') return;
-  const avant = $('selLongueur').value;
-  const ls = RACCORDS_NPT.mamelon.tailles[taille].longueurs;
-  $('selLongueur').innerHTML = ls.map((l, i) => `<option value="${l}">${frac(l)} po${i === 0 ? ' (serré)' : ''}</option>`).join('');
-  if (ls.map(String).includes(avant)) $('selLongueur').value = avant;
-}
-
-function afficher() {
-  majLongueurs();
-  const type = $('selPiece').value, taille = $('selTaille').value;
-  const longueur = Number($('selLongueur').value) || undefined;
-  if (piece) {
-    vue.scene.remove(piece);
-    piece.traverse(o => o.geometry?.dispose());
+document.addEventListener('keydown', e => {
+  if (e.target.matches('input, select')) return;
+  if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z') { e.preventDefault(); annuler(); return; }
+  if (e.key === 'Escape') {
+    if (mesures.apercu) { mesures.annulerApercu(); note('Mesure annulée.'); }
+    else { selection = null; rafraichir(); }
   }
-  piece = CONSTRUCTEURS_NPT[type](taille, longueur);
-  vue.scene.add(piece);
-  vue.cadrer(piece);
+  if (e.key === 'Delete' || e.key === 'Backspace') supprimer();
+  if (e.key.toLowerCase() === 'm') choisirOutil('mesure');
+  if (e.key.toLowerCase() === 's') choisirOutil('main');
+});
 
-  const r = RACCORDS_NPT[type], d = r.tailles[taille], f = FILETS_NPT[taille], fo = FONTE_150[taille];
-  $('fiche').innerHTML = `
-    <h2>${r.nom} ${taille} po NPT</h2>
-    <p class="muted">${r.nomAnglais} · ${type === 'mamelon' ? 'acier noir, schedule 40' : 'fonte malléable noire, classe 150'}</p>
-    <dl>
-      ${type === 'mamelon' ? `<dt>Longueur</dt><dd>${fmt(longueur)}</dd>` : ''}
-      ${d.longueur ? `<dt>Longueur</dt><dd>${fmt(d.longueur)}</dd>` : ''}
-      ${d.centreFace ? `<dt>Centre à face</dt><dd>${fmt(d.centreFace)}</dd>` : ''}
-      ${type === 'union' ? `<dt>Écrou</dt><dd>octogone ${fmt(d.octogone)}</dd><dt>Bouts</dt><dd>hexagone ${fmt(d.hexagone)}</dd>` : ''}
-      ${['manchon', 'coude90', 'coude45', 'te'].includes(type) ? `<dt>Ø du bourrelet</dt><dd>${fmt(fo.bourrelet.d)}</dd>` : ''}
-      <dt>Filets</dt><dd>${f.tpi} filets/po, conicité 1:16</dd>
-      ${type === 'mamelon'
-        ? `<dt>Ø extérieur</dt><dd>${fmt(f.D)}</dd><dt>Ø intérieur</dt><dd>${fmt(f.diInt)}</dd><dt>Filetage</dt><dd>${fmt(f.L4)} par bout</dd>`
-        : `<dt>Longueur taraudée</dt><dd>${fmt(type === 'union' ? d.filet : fo.longFiletee)}</dd><dt>Ø ext. du tuyau</dt><dd>${fmt(f.D)}</dd>`}
-    </dl>
-    ${d.mcmaster ? `<p class="muted petit">Référence : McMaster-Carr ${d.mcmaster}</p>` : ''}`;
-}
-
-$('selPiece').onchange = afficher;
-$('selTaille').onchange = afficher;
-$('selLongueur').onchange = afficher;
-$('chkCoupe').onchange = e => vue.coupe(e.target.checked);
-$('btnCadrer').onclick = () => vue.cadrer(piece);
-
-afficher();
+rafraichir();
 $('chargement').hidden = true;
-window.__conduits = { vue, THREE };
+window.__conduits = { vue, montage, mesures, THREE, ajouter, choisirOutil, tourner, $ };

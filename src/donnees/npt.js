@@ -71,6 +71,7 @@ export const RACCORDS_NPT = {
   union: {
     nom: 'Union',
     nomAnglais: 'Union',
+    feminin: true,
     tailles: {
       // hexagone : bouts sur plats ; octogone : écrou sur plats ; longBout : longueur de chaque hexagone ;
       // filet : profondeur taraudée (plans McMaster)

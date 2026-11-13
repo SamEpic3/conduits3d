@@ -26,10 +26,12 @@ export function creerScene(canvas) {
   const planCoupe = new THREE.Plane(new THREE.Vector3(0, 0, -1), 0);
 
   let enAttente = false;
+  const avantRendu = [];
   const dessiner = () => {
     enAttente = false;
     if (controls.update()) demander();
     renderer.render(scene, camera);
+    for (const f of avantRendu) f();
   };
   const demander = () => { if (!enAttente) { enAttente = true; requestAnimationFrame(dessiner); } };
   controls.addEventListener('change', demander);
@@ -48,7 +50,15 @@ export function creerScene(canvas) {
   new ResizeObserver(redimensionner).observe(canvas.parentElement);
 
   return {
-    scene, camera, controls, renderer, demander,
+    scene, camera, controls, renderer, demander, avantRendu,
+    // Vue normalisée : 'face' (regarde vers -Z), 'dessus' (vers -Y), 'cote' (vers -X), 'iso'.
+    vue(nom, objet) {
+      const dirs = { face: [0, 0, 1], dessus: [0, 1, 0.0001], cote: [1, 0, 0], iso: [0.8, 0.65, 1] };
+      const d = new THREE.Vector3(...dirs[nom]).normalize();
+      const dist = camera.position.distanceTo(controls.target) || 5;
+      camera.position.copy(controls.target).addScaledVector(d, dist);
+      this.cadrer(objet);
+    },
     coupe(actif) {
       renderer.clippingPlanes = actif ? [planCoupe] : [];
       demander();
@@ -56,6 +66,7 @@ export function creerScene(canvas) {
     // Cadre la caméra sur un objet sans changer l'angle de vue.
     cadrer(objet) {
       const boite = new THREE.Box3().setFromObject(objet);
+      if (boite.isEmpty()) { demander(); return; }
       const centre = boite.getCenter(new THREE.Vector3());
       const rayon = boite.getSize(new THREE.Vector3()).length() / 2;
       const dir = camera.position.clone().sub(controls.target).normalize();

@@ -8,68 +8,141 @@
 :root{
   --bg:#eef0f2; --panel:#ffffff; --fg:#1d2126; --muted:#5f6872; --line:#d5dade;
   --stage:#e6e9ec; --copper:#b8692f; --copper-strong:#9a5523; --copper-soft:#f6e6d8;
+  --blue:#1f56c4; --warn:#9a5b00;
   --display:"Barlow Condensed","Arial Narrow",Arial,sans-serif;
   --body:"Barlow",system-ui,-apple-system,"Segoe UI",sans-serif;
   --mono:"IBM Plex Mono",ui-monospace,Menlo,Consolas,monospace;
 }
 @media (prefers-color-scheme:dark){:root{
   --bg:#16191c; --panel:#1f2327; --fg:#e8ebee; --muted:#9aa3ac; --line:#323940;
-  --stage:#c9ced3; --copper:#d98a4e; --copper-strong:#e9a06a; --copper-soft:#3a2a1f; color-scheme:dark}}
+  --stage:#c9ced3; --copper:#d98a4e; --copper-strong:#e9a06a; --copper-soft:#3a2a1f; --blue:#7fa8ec; --warn:#e3a54a; color-scheme:dark}}
 *{box-sizing:border-box}
 [hidden]{display:none!important}
 html,body{height:100%;margin:0}
 body{background:var(--bg);color:var(--fg);font-family:var(--body);font-size:15px;line-height:1.45;overflow:hidden;padding:16px}
 .stage{background:var(--stage);border-radius:12px;overflow:hidden;position:relative;height:100%}
 #cv{display:block;width:100%;height:100%;touch-action:none}
-.panel{position:absolute;top:12px;right:12px;width:min(300px,calc(100% - 24px));z-index:5;padding:14px;display:grid;gap:12px;
+.stage.outil-mesure #cv{cursor:crosshair}
+#etiquettes{position:absolute;inset:0;pointer-events:none;z-index:2}
+#etiquettes .etq{position:absolute;transform:translate(-50%,-130%);white-space:nowrap;font:600 13px var(--mono);color:#fff;background:var(--blue);padding:2px 7px;border-radius:6px;box-shadow:0 1px 4px rgb(0 0 0 / .25)}
+#etiquettes .etq.apercu{background:#e0560b}
+.panel{position:absolute;top:12px;right:12px;bottom:12px;width:min(310px,calc(100% - 24px));z-index:5;padding:14px;display:flex;flex-direction:column;gap:12px;overflow:auto;
   background:color-mix(in srgb,var(--panel) 94%,transparent);backdrop-filter:blur(6px);border:1px solid var(--line);border-radius:12px;box-shadow:0 6px 22px rgb(0 0 0 / .12)}
+.panel section{display:grid;gap:8px;border-top:1px solid var(--line);padding-top:10px}
 h1{font:600 22px var(--display);margin:0;letter-spacing:.2px}
-h2{font:600 19px var(--display);margin:0}
+h2{font:600 18px var(--display);margin:0}
+h3{font:600 13px var(--body);margin:0;text-transform:uppercase;letter-spacing:.6px;color:var(--muted)}
 label{display:grid;gap:4px;font-size:13px;color:var(--muted)}
-select{font:500 15px var(--body);padding:7px 8px;border:1px solid var(--line);border-radius:6px;background:var(--bg);color:var(--fg)}
-.row{display:flex;gap:8px;align-items:center}
-.check{display:flex;gap:8px;align-items:center;font-size:15px;color:var(--fg)}
-button{font:600 14px/1 var(--body);border-radius:8px;padding:9px 12px;cursor:pointer;border:1px solid var(--line);background:var(--panel);color:var(--fg)}
-button:hover{border-color:var(--copper)}
-dl{display:grid;grid-template-columns:auto 1fr;gap:3px 12px;margin:8px 0 0}
-dt{color:var(--muted)} dd{margin:0;font-family:var(--mono);font-size:13.5px;align-self:center}
-.muted{color:var(--muted);margin:2px 0 0} .petit{font-size:12.5px}
-#fiche{border-top:1px solid var(--line);padding-top:10px}
+select,input[type=text]{font:500 15px var(--body);padding:7px 8px;border:1px solid var(--line);border-radius:6px;background:var(--bg);color:var(--fg);width:100%}
+.row{display:flex;gap:6px;align-items:center;flex-wrap:wrap}
+.row>*{flex:1}
+button{font:600 14px/1 var(--body);border-radius:8px;padding:9px 10px;cursor:pointer;border:1px solid var(--line);background:var(--panel);color:var(--fg);white-space:nowrap}
+button:hover:not(:disabled){border-color:var(--copper)}
+button:disabled{opacity:.45;cursor:default}
+button.primary{background:var(--copper);border-color:var(--copper);color:#fff}
+button.primary:hover:not(:disabled){background:var(--copper-strong)}
+button.danger{color:#b3261e}
+dl{display:grid;grid-template-columns:auto 1fr;gap:3px 12px;margin:4px 0 0}
+dt{color:var(--muted)} dd{margin:0;font-family:var(--mono);font-size:13px;align-self:center}
+.muted{color:var(--muted);margin:0;font-size:13.5px}
+.badge{font:600 11px var(--mono);background:var(--copper-soft);color:var(--copper-strong);border-radius:999px;padding:2px 8px;justify-self:start;align-self:flex-start}
+#listeMesures{margin:0;padding-left:18px;font:500 13px var(--mono)}
+#listeMesures:empty{display:none}
+.toolbar{position:absolute;top:10px;left:10px;display:flex;gap:4px;padding:4px;border-radius:10px;background:var(--panel);border:1px solid var(--line);box-shadow:0 2px 8px rgb(0 0 0 / .08);z-index:4;flex-wrap:wrap;max-width:calc(100% - 350px)}
+.toolbar button{padding:7px 9px;border:0;background:transparent;font-size:14px}
+.toolbar button:hover:not(:disabled){background:var(--bg)}
+.toolbar button.on{background:var(--copper);color:#fff}
+.toolbar .sep{width:1px;align-self:stretch;background:var(--line);margin:4px 2px}
+#modes{top:58px}
+#note{position:absolute;left:50%;bottom:14px;transform:translateX(calc(-50% - 160px));z-index:4;max-width:min(560px,calc(100% - 360px));padding:9px 14px;border-radius:10px;margin:0;
+  background:color-mix(in srgb,var(--panel) 94%,transparent);border:1px solid var(--line);font-size:14px;text-align:center;box-shadow:0 2px 8px rgb(0 0 0 / .08)}
+#note.erreur{border-color:var(--warn);color:var(--warn)}
 #chargement{position:absolute;inset:0;display:grid;place-items:center;color:var(--muted)}
-.badge{font:600 11px var(--mono);background:var(--copper-soft);color:var(--copper-strong);border-radius:999px;padding:2px 8px;justify-self:start}
+@media (max-width:760px){.toolbar{max-width:calc(100% - 20px)} #note{transform:translateX(-50%);max-width:calc(100% - 20px);bottom:auto;top:110px}}
 </style>
 <script type="importmap">{"imports":{"three":"./vendor/three.module.js","three/addons/controls/OrbitControls.js":"./vendor/addons/OrbitControls.js","three/addons/environments/RoomEnvironment.js":"./vendor/addons/RoomEnvironment.js","app/":"./src/"}}</script>
 </head>
 <body>
-<div class="stage">
-  <canvas id="cv" aria-label="Vue 3D de la pièce"></canvas>
+<div class="stage" id="stage">
+  <canvas id="cv" aria-label="Vue 3D du montage"></canvas>
+  <div id="etiquettes"></div>
   <p id="chargement">Chargement de la 3D…</p>
+
+  <div class="toolbar" role="toolbar" aria-label="Outils">
+    <button data-outil="main" class="on" title="Sélection (S) : choisis une sortie ou une pièce">✋ Sélection</button>
+    <button data-outil="mesure" title="Mesure (M) : clique deux points repères">📏 Mesure</button>
+    <span class="sep"></span>
+    <button id="btnAnnuler" title="Annuler (Ctrl+Z)" disabled>↶ Annuler</button>
+    <button id="btnCoupe" title="Vue en coupe">◧ Coupe</button>
+    <span class="sep"></span>
+    <button data-vue="iso" title="Vue 3D">3D</button>
+    <button data-vue="face" title="Vue de face">Face</button>
+    <button data-vue="dessus" title="Vue de dessus">Dessus</button>
+    <button data-vue="cote" title="Vue de côté">Côté</button>
+  </div>
+  <div class="toolbar" id="modes" role="radiogroup" aria-label="Type de mesure" hidden>
+    <button data-mode="d" class="on" title="Distance réelle entre les deux points">⤢ Directe</button>
+    <button data-mode="x" title="Écart selon X (largeur)">↔ X</button>
+    <button data-mode="y" title="Écart selon Y (hauteur)">↕ Y</button>
+    <button data-mode="z" title="Écart selon Z (profondeur)">⊙ Z</button>
+  </div>
+  <p id="note">Choisis une pièce, puis clique « Ajouter » pour commencer le montage.</p>
+
   <aside class="panel">
     <h1>Conduits 3D</h1>
-    <span class="badge">Étape 1 · visionneuse de pièces</span>
-    <label>Pièce
-      <select id="selPiece">
-        <optgroup label="Acier NPT (fonte malléable noire)">
-          <option value="manchon">Manchon</option>
-          <option value="coude90">Coude 90°</option>
-          <option value="coude45">Coude 45°</option>
-          <option value="te">Té</option>
-          <option value="union">Union</option>
-          <option value="mamelon">Mamelon</option>
-        </optgroup>
-      </select>
-    </label>
-    <label>Diamètre nominal
-      <select id="selTaille"><option>1/2</option><option>3/4</option></select>
-    </label>
-    <label id="lblLongueur" hidden>Longueur du mamelon
-      <select id="selLongueur"></select>
-    </label>
-    <div class="row">
-      <label class="check"><input type="checkbox" id="chkCoupe"> Vue en coupe</label>
-      <button id="btnCadrer" style="margin-left:auto">Recentrer</button>
-    </div>
-    <div id="fiche"></div>
+    <span class="badge">Étape 2 · montage NPT</span>
+
+    <section>
+      <h3>Ajouter une pièce</h3>
+      <label>Pièce
+        <select id="selPiece">
+          <optgroup label="Acier NPT (fonte malléable noire)">
+            <option value="mamelon">Mamelon / tuyau</option>
+            <option value="manchon">Manchon</option>
+            <option value="coude90">Coude 90°</option>
+            <option value="coude45">Coude 45°</option>
+            <option value="te">Té</option>
+            <option value="union">Union</option>
+          </optgroup>
+        </select>
+      </label>
+      <div class="row">
+        <label>Diamètre nominal
+          <select id="selTaille"><option>1/2</option><option>3/4</option></select>
+        </label>
+        <label id="lblLongueur">Longueur (po)
+          <input type="text" id="txtLongueur" list="longueursStd" value="3" inputmode="decimal">
+          <datalist id="longueursStd"></datalist>
+        </label>
+      </div>
+      <button id="btnAjouter" class="primary">＋ Ajouter</button>
+      <p class="muted" id="indice"></p>
+    </section>
+
+    <section id="secPiece" hidden>
+      <h3>Pièce choisie</h3>
+      <div id="fiche"></div>
+      <div class="row">
+        <button data-tourner="-90" title="Tourner autour du joint">↺ 90°</button>
+        <button data-tourner="-45">↺ 45°</button>
+        <button data-tourner="45">↻ 45°</button>
+        <button data-tourner="90">↻ 90°</button>
+      </div>
+      <div class="row">
+        <button id="btnSortie" title="Brancher la pièce par une autre de ses sorties">⇄ Changer de sortie</button>
+        <button id="btnSupprimer" class="danger" title="Supprimer (Suppr) : enlève aussi ce qui est branché dessus">🗑 Supprimer</button>
+      </div>
+    </section>
+
+    <section>
+      <h3>Mesures</h3>
+      <ol id="listeMesures"></ol>
+      <p class="muted" id="mesVide">Outil Mesure : clique deux points repères (centre d'un raccord en violet, face ou bout de tuyau en gris).</p>
+      <div class="row">
+        <button id="btnEffMesures" disabled>Effacer les mesures</button>
+        <button id="btnToutEffacer" class="danger">Nouveau montage</button>
+      </div>
+    </section>
   </aside>
 </div>
 <script type="module">

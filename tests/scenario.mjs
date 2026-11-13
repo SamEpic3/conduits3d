@@ -1,0 +1,13 @@
+import { chromium } from 'playwright';
+import { readFileSync } from 'node:fs';
+const nav = await chromium.launch({ executablePath: '/usr/bin/google-chrome', args: ['--use-angle=swiftshader','--enable-unsafe-swiftshader'] });
+const page = await nav.newPage({ viewport: { width: 1200, height: 800 } });
+const err=[]; page.on('pageerror', e => err.push(e.message)); page.on('console', m => { if (m.type()==='error') err.push(m.text()); });
+await page.goto('file:///home/claude/conduits3d/index.html');
+await page.waitForFunction(() => window.__conduits);
+await page.evaluate(readFileSync(process.argv[2],'utf8'));
+await page.waitForTimeout(800);
+console.log(JSON.stringify(await page.evaluate(()=>window.__res), null, 0));
+await page.screenshot({ path: process.argv[3] });
+console.log(err.join('\n') || 'aucune erreur');
+await nav.close();
