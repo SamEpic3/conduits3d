@@ -4,6 +4,7 @@ import * as THREE from 'three';
 import { CATALOGUE, compatibles, engagementJoint } from 'app/catalogue.js';
 import { MATERIAUX } from 'app/materiaux.js';
 import { TUBE_CUIVRE } from 'app/donnees/cuivre.js';
+import { revolution } from 'app/geometrie/revolution.js';
 
 const Y = new THREE.Vector3(0, 1, 0);
 
@@ -62,6 +63,7 @@ export class Montage {
       position: pt.position.clone().applyMatrix4(o.matrix),
       sortie: pt.sortie.clone().applyQuaternion(q).normalize(),
       type: pt.type, taille: pt.taille,
+      engagement: pt.engagement, garniture: pt.garniture, raccord: pt.raccord,
     };
   }
 
@@ -138,7 +140,10 @@ export class Montage {
         const q = new THREE.Quaternion().setFromUnitVectors(pe.sortie, cible.sortie.clone().negate());
         q.premultiply(new THREE.Quaternion().setFromAxisAngle(cible.sortie, THREE.MathUtils.degToRad(p.angle)));
         // Le bout mâle entre dans le raccord : les deux ports sont décalés de l'engagement.
-        const pos = cible.position.clone().addScaledVector(cible.sortie, -engagementJoint(cible.type, cible.taille))
+        // L'engagement vient du raccord femelle s'il le précise (raccords de tube), sinon de la famille.
+        const fem = cible.type.endsWith('-f') ? cible : pe;
+        const eng = fem.engagement ?? engagementJoint(fem.type, fem.taille);
+        const pos = cible.position.clone().addScaledVector(cible.sortie, -eng)
           .sub(pe.position.clone().applyQuaternion(q));
         o.matrix.compose(pos, q, new THREE.Vector3(1, 1, 1));
       }
@@ -156,8 +161,16 @@ export class Montage {
       if (!p.lien) continue;
       const parent = this.piece(p.lien.parent);
       const a = this.portMonde(parent, p.lien.port), b = this.portMonde(p, p.lien.portEnfant);
+      const face = a.type.endsWith('-f') ? a : b;
+      if (face.garniture) {
+        // Évasement du tube (SAE, inverted flare), posé dans le raccord.
+        const g = new THREE.Mesh(revolution(face.garniture.profil.map(([r, d]) => [r, -d]), 48, 60), MATERIAUX[face.garniture.materiau]);
+        g.quaternion.setFromUnitVectors(new THREE.Vector3(0, 0, 1), face.sortie);
+        g.position.copy(face.position);
+        this.soudures.add(g);
+        continue;
+      }
       if (!a.type.startsWith('cu')) continue;
-      const face = a.type === 'cu-f' ? a : b;
       const R = TUBE_CUIVRE[face.taille].D / 2;
       const m = new THREE.Mesh(new THREE.TorusGeometry(R + 0.006, 0.011, 8, 56), MATERIAUX.soudure);
       m.quaternion.setFromUnitVectors(new THREE.Vector3(0, 0, 1), face.sortie);

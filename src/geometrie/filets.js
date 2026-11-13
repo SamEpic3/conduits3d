@@ -104,3 +104,31 @@ export function bouchonFilet({ z, z0, rFlanc, pas, hauteur, phase = 0, R, sens, 
   g.setIndex(idx);
   return g;
 }
+
+// Filet droit (UN/UNF, non conique) entre z0 et z1.
+//   maj : diamètre majeur ; tpi : filets par pouce ; interieur : taraudage (écrou) ou filet extérieur
+export function filetDroit({ z0, z1, maj, tpi, interieur = false, phase = 0, segments = 56 }) {
+  const pas = 1 / tpi, h = 0.6 * pas;
+  const rFlanc = () => maj / 2 - h / 2;
+  return surfaceFiletee({ z0, z1, rFlanc, pas, hauteur: h, interieur, phase, segments });
+}
+
+// Rayons utiles d'un filet droit : sommet (majeur) et fond (mineur).
+export function rayonsFiletDroit(maj, tpi) {
+  const h = 0.6 / tpi;
+  return { rMaj: maj / 2, rMin: maj / 2 - h };
+}
+
+// Filet droit avec ses deux bouts bouchés (anneaux plats), prêt à poser.
+// Renvoie une liste de géométries. Les bouchons vont du bord du filet jusqu'au fond (filet extérieur)
+// ou jusqu'au sommet (taraudage).
+export function filetDroitComplet({ z0, z1, maj, tpi, interieur = false, phase = 0 }) {
+  const pas = 1 / tpi, h = 0.6 * pas, rF = maj / 2 - h / 2;
+  const opt = { z0, z1, rFlanc: () => rF, pas, hauteur: h, interieur, phase, segments: 56 };
+  const R = interieur ? maj / 2 : maj / 2 - h;
+  return [
+    surfaceFiletee(opt),
+    bouchonFilet({ ...opt, z: z0, R, sens: -1, segments: 56 }),
+    bouchonFilet({ ...opt, z: z1, R, sens: 1, segments: 56 }),
+  ];
+}

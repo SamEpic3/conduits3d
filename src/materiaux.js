@@ -54,6 +54,10 @@ export const MATERIAUX = {
   cuivre: std({ color: 0xc8805a, metalness: 1.0, roughness: 0.33 }),
   // Filets usinés dans le cuivre ou le laiton : plus brillants.
   filetCuivre: std({ color: 0xd99a6e, metalness: 1.0, roughness: 0.25 }),
+  // Filets usinés dans le laiton.
+  filetLaiton: std({ color: 0xd2b36e, metalness: 1.0, roughness: 0.28 }),
+  // Acier zingué (écrous inverted flare).
+  acierZingue: std({ color: 0xb4b8bc, metalness: 0.9, roughness: 0.35 }),
   // Soudure à l'étain (cordon au joint).
   soudure: std({ color: 0xb9bbb6, metalness: 1.0, roughness: 0.3 }),
   // Laiton (écrou d'union).

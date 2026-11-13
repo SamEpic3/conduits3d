@@ -9,16 +9,18 @@ import { RACCORDS_NPT, FONTE_150, FILETS_NPT } from 'app/donnees/npt.js';
 import { RACCORDS_CUIVRE, TUBE_CUIVRE } from 'app/donnees/cuivre.js';
 import { CONSTRUCTEURS_NPT } from 'app/pieces/npt.js';
 import { CONSTRUCTEURS_CUIVRE } from 'app/pieces/cuivre.js';
+import { CONSTRUCTEURS_TUBE } from 'app/pieces/tube.js';
+import { TUBE, CONNECTEURS, ECROUS, NOMS_TUBE } from 'app/donnees/tube.js';
 
 const FONTE = 'fonte malléable noire, classe 150';
 const CUIVRE = 'cuivre corroyé (wrot), à souder';
 
 const npt = (cle, extra) => ({
-  ...RACCORDS_NPT[cle], famille: 'npt', matiere: FONTE, centre: true, longueur: null,
+  ...RACCORDS_NPT[cle], famille: 'npt', matiere: FONTE, centre: true, longueur: null, listeTailles: ['1/2', '3/4'],
   construire: CONSTRUCTEURS_NPT[cle], ...extra,
 });
 const cu = (cle, extra) => ({
-  ...RACCORDS_CUIVRE[cle], famille: 'cu', matiere: CUIVRE, centre: true, longueur: null,
+  ...RACCORDS_CUIVRE[cle], famille: 'cu', matiere: CUIVRE, centre: true, longueur: null, listeTailles: ['1/2', '3/4'],
   construire: CONSTRUCTEURS_CUIVRE[cle], ...extra,
 });
 
@@ -31,7 +33,7 @@ const centreArret = cle => t => [
 export const CATALOGUE = {
   // --- Acier NPT ---
   mamelon: npt('mamelon', {
-    nom: 'Mamelon / tuyau', matiere: 'acier noir, schedule 40', centre: false,
+    nom: 'Mamelon / tuyau', matiere: 'acier noir, schedule 40', centre: false, listeTailles: ['1/4', '3/8', '1/2', '3/4'],
     longueur: { min: t => RACCORDS_NPT.mamelon.tailles[t].longueurs[0], suggestions: t => RACCORDS_NPT.mamelon.tailles[t].longueurs },
     fiche: (t, L) => [['Longueur de coupe', L], ['Ø extérieur', FILETS_NPT[t].D], ['Filetage par bout', Math.min(FILETS_NPT[t].L4, L / 2)]],
   }),
@@ -48,7 +50,8 @@ export const CATALOGUE = {
   }),
   reducteur: npt('reducteur', {
     centre: false, deuxiemeTaille: 'Filet femelle',
-    combinaisons: ['3/4|1/2'],
+    listeTailles: ['3/4', '1/2'], listeTaillesB: ['1/2', '3/8', '1/4'],
+    combinaisons: Object.keys(RACCORDS_NPT.reducteur.tailles),
     fiche: (t, L, tb) => { const r = RACCORDS_NPT.reducteur.tailles[`${t}|${tb}`]; return [['Longueur', r.longueur], ['Hexagone (sur plats)', r.hexagone]]; },
   }),
 
@@ -74,14 +77,45 @@ export const CATALOGUE = {
     fiche: t => [['Longueur', TUBE_CUIVRE[t].profondeur + RACCORDS_CUIVRE.capuchon.tailles[t].bout]],
   }),
   'cu-adaptF': cu('adaptF', {
-    nom: 'Adaptateur cuivre × NPT femelle', centre: false, deuxiemeTaille: 'Filet NPT femelle',
+    nom: 'Adaptateur cuivre × NPT femelle', centre: false, deuxiemeTaille: 'Filet NPT femelle', listeTaillesB: ['1/2', '3/4'],
     fiche: (t, L, tb) => [['Arrêt à face NPT', RACCORDS_CUIVRE.adaptF.tailles[`${t}|${tb}`].arretFace], ['Profondeur de douille', TUBE_CUIVRE[t].profondeur]],
   }),
   'cu-adaptM': cu('adaptM', {
-    nom: 'Adaptateur cuivre × NPT mâle', centre: false, deuxiemeTaille: 'Filet NPT mâle',
+    nom: 'Adaptateur cuivre × NPT mâle', centre: false, deuxiemeTaille: 'Filet NPT mâle', listeTaillesB: ['1/2', '3/4'],
     fiche: (t, L, tb) => [['Filetage', RACCORDS_CUIVRE.adaptM.tailles[`${t}|${tb}`].filet], ['Profondeur de douille', TUBE_CUIVRE[t].profondeur]],
   }),
+
+  // --- Raccords de tube (laiton) ---
+  'tb-tube': {
+    nom: 'Tube de cuivre recuit', nomAnglais: 'Soft copper tube', famille: 'tube', matiere: 'cuivre recuit',
+    centre: false, listeTailles: ['5/16', '3/8'], construire: CONSTRUCTEURS_TUBE.tube,
+    longueur: { min: () => 0.5, suggestions: () => [3, 4, 6, 8, 12] },
+    fiche: (t, L) => [['Longueur de coupe', L], ['Ø extérieur', TUBE[t].D], ['Épaisseur', TUBE[t].paroi]],
+  },
+  ...connecteurs(),
 };
+
+// Les six connecteurs tube × NPT (SAE 45°, inverted flare, compression ; mâle ou femelle côté NPT).
+function connecteurs() {
+  const out = {};
+  for (const r of ['sae', 'if', 'comp']) for (const g of ['m', 'f']) {
+    const cle = `${r}-${g}`, ref = { sae: g === 'm' ? '48' : '46', if: g === 'm' ? '202' : '252', comp: g === 'm' ? '68' : '66' }[r];
+    out[`tb-${cle}`] = {
+      nom: `Connecteur ${NOMS_TUBE[r]} × NPT ${g === 'm' ? 'mâle' : 'femelle'}`,
+      nomAnglais: `${{ sae: 'SAE 45° flare', if: 'Inverted flare', comp: 'Compression' }[r]} ${g === 'm' ? 'male' : 'female'} connector (Weatherhead ${ref})`,
+      famille: 'tube', matiere: r === 'if' ? 'laiton, écrou en acier zingué' : 'laiton, livré avec écrou' + (r === 'comp' ? ' et bague' : ''),
+      centre: false, longueur: null,
+      listeTailles: ['5/16', '3/8'], listeTaillesB: ['1/4', '3/8'], deuxiemeTaille: `Filet NPT ${g === 'm' ? 'mâle' : 'femelle'}`,
+      combinaisons: Object.keys(CONNECTEURS[cle]),
+      construire: CONSTRUCTEURS_TUBE[{ sae: 'sae', if: 'if', comp: 'comp' }[r] + g.toUpperCase()],
+      fiche: (t, L, tb) => {
+        const c = CONNECTEURS[cle][`${t}|${tb}`];
+        return [[r === 'comp' ? 'Longueur (avec écrou)' : 'Longueur du corps', c.L], ['Hexagone du corps', c.hex], ['Hexagone de l\'écrou', ECROUS[r][t].hex]];
+      },
+    };
+  }
+  return out;
+}
 
 // Longueur dont un bout entre dans l'autre au joint : engagement des filets (NPT)
 // ou profondeur de la douille (cuivre).
@@ -93,9 +127,15 @@ export function engagementJoint(type, taille) {
 // Renvoie null si c'est possible, sinon l'explication pour l'élève.
 export function compatibles(a, b) {
   const [fa, ga] = a.type.split('-'), [fb, gb] = b.type.split('-');
-  if (fa !== fb) return 'Le cuivre à souder ne se raccorde pas directement à un filet NPT : il faut un adaptateur cuivre × NPT.';
+  if (fa !== fb) {
+    if (fa === 'tube' || fb === 'tube') return 'Un tube de 5/16 ou 3/8 se raccorde seulement à un raccord de tube (SAE 45°, inverted flare ou compression) ; pour passer au NPT, il faut un connecteur.';
+    return 'Le cuivre à souder ne se raccorde pas directement à un filet NPT : il faut un adaptateur cuivre × NPT.';
+  }
   if (a.taille !== b.taille) return `Les grosseurs ne correspondent pas (${a.taille} po et ${b.taille} po).`;
-  if (fa === 'cu') {
+  if (fa === 'tube') {
+    if (ga === 'f' && gb === 'f') return 'Deux raccords de tube ne se branchent pas ensemble : il faut un bout de tube entre les deux.';
+    if (ga === 'm' && gb === 'm') return 'Deux bouts de tube ne se raccordent pas bout à bout : il faut un raccord.';
+  } else if (fa === 'cu') {
     if (ga === 'f' && gb === 'f') return 'Deux douilles ne se soudent pas ensemble : il faut un bout de tube de cuivre entre les deux.';
     if (ga === 'm' && gb === 'm') return 'Deux bouts de tube ne se soudent pas bout à bout : il faut un raccord (manchon, coude, té…).';
   } else {

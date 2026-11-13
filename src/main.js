@@ -3,6 +3,7 @@ import * as THREE from 'three';
 import { creerScene } from 'app/scene.js';
 import { FILETS_NPT } from 'app/donnees/npt.js';
 import { TUBE_CUIVRE } from 'app/donnees/cuivre.js';
+import { TUBE } from 'app/donnees/tube.js';
 import { CATALOGUE } from 'app/catalogue.js';
 import { Montage } from 'app/montage.js';
 import { Mesures, NOMS_MODES, longueurMesure, fmtPo } from 'app/mesure.js';
@@ -70,7 +71,8 @@ function dessinerAnneaux() {
   if (outil !== 'main') return;
   for (const s of montage.sortiesLibres()) {
     const choisi = cible && cible.id === s.id && cible.port === s.port;
-    const r = (s.type.startsWith('cu') ? TUBE_CUIVRE[s.taille].D : FILETS_NPT[s.taille].D) / 2 + 0.1;
+    const D = s.type.startsWith('cu') ? TUBE_CUIVRE[s.taille].D : s.type.startsWith('tube') ? TUBE[s.taille].D : FILETS_NPT[s.taille].D;
+    const r = D / 2 + (s.type.startsWith('tube') ? 0.07 : 0.1);
     const g = new THREE.Group();
     g.add(new THREE.Mesh(new THREE.TorusGeometry(r, 0.022, 10, 48), choisi ? matAnneauChoisi : matAnneau));
     g.add(new THREE.Mesh(new THREE.CircleGeometry(r, 40), choisi ? matDisqueChoisi : matDisque));
@@ -120,8 +122,18 @@ function rafraichir() {
   vue.demander();
 }
 
+// Met les grosseurs offertes dans un menu, en gardant le choix actuel s'il existe encore.
+function remplir(sel, liste) {
+  const actuel = sel.value;
+  if ([...sel.options].map(o => o.value).join() !== liste.join())
+    sel.innerHTML = liste.map(t => `<option>${t}</option>`).join('');
+  if (liste.includes(actuel)) sel.value = actuel;
+}
+
 function majPanneau() {
   const entree = CATALOGUE[$('selPiece').value];
+  remplir($('selTaille'), entree.listeTailles);
+  if (entree.listeTaillesB) remplir($('selTailleB'), entree.listeTaillesB);
   $('lblLongueur').hidden = !entree.longueur;
   $('lblTailleB').hidden = !entree.deuxiemeTaille;
   if (entree.deuxiemeTaille) $('lblTailleBTexte').textContent = entree.deuxiemeTaille;
@@ -175,7 +187,7 @@ function ajouter() {
   const tailleB = CATALOGUE[type].deuxiemeTaille ? $('selTailleB').value : undefined;
   const combos = CATALOGUE[type].combinaisons;
   if (combos && !combos.includes(`${taille}|${tailleB}`))
-    return note(`Offert seulement en ${combos.map(c => c.replace('|', ' × ')).join(', ')} po (mâle × femelle).`, true);
+    return note(`Offert seulement en ${combos.map(c => c.replace('|', ' × ')).join(', ')} po .`, true);
   let longueur;
   const entree = CATALOGUE[type];
   if (entree.longueur) {
@@ -282,7 +294,8 @@ $('cv').addEventListener('pointerup', e => {
   if (surAnneau) {
     const s = ancetre(surAnneau.object, 'sortie').userData.sortie;
     cible = s; selection = s.id;
-    $('selTaille').value = montage.ports(montage.piece(s.id))[s.port].taille;
+    const tp = montage.ports(montage.piece(s.id))[s.port].taille;
+    if ([...$('selTaille').options].some(o => o.value === tp)) $('selTaille').value = tp;
     rafraichir();
     note('Sortie choisie. Choisis la pièce à brancher, puis clique « Ajouter ».');
     return;
@@ -343,4 +356,4 @@ document.addEventListener('keydown', e => {
 
 rafraichir();
 $('chargement').hidden = true;
-window.__conduits = { vue, montage, mesures, THREE, ajouter, choisirOutil, tourner, $ };
+window.__conduits = { vue, montage, mesures, THREE, ajouter, choisirOutil, tourner, $, choisirSortie: (id, port) => { cible = { id, port }; rafraichir(); } };

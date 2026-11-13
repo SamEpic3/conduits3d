@@ -13,6 +13,8 @@
 //   diInt : diamètre intérieur du tuyau schedule 40
 //   engagement : longueur du tuyau qui entre dans le raccord une fois serré à la clé
 export const FILETS_NPT = {
+  '1/4': { tpi: 18, D: 0.540, E0: 0.47739, E1: 0.49163, L1: 0.228, L2: 0.4018, L4: 0.5946, diInt: 0.364, engagement: 0.375 },
+  '3/8': { tpi: 18, D: 0.675, E0: 0.61201, E1: 0.62701, L1: 0.240, L2: 0.4078, L4: 0.6006, diInt: 0.493, engagement: 0.375 },
   '1/2': { tpi: 14, D: 0.840, E0: 0.75843, E1: 0.77843, L1: 0.320, L2: 0.5337, L4: 0.7815, diInt: 0.622, engagement: 0.50 },
   '3/4': { tpi: 14, D: 1.050, E0: 0.96768, E1: 0.98887, L1: 0.339, L2: 0.5457, L4: 0.7935, diInt: 0.824, engagement: 0.5625 },
 };
@@ -28,6 +30,9 @@ export const CONICITE = 1 / 16;
 //   corps        : Ø du corps entre les bourrelets
 //   longFiletee  : longueur filetée dans chaque bout du raccord (B16.3, « B »)
 export const FONTE_150 = {
+  // 1/4 et 3/8 : seulement pour les taraudages (réducteurs) ; bourrelet et corps estimés.
+  '1/4': { bourrelet: { d: 0.91, l: 0.21 }, corps: 0.80, longFiletee: 0.32 },
+  '3/8': { bourrelet: { d: 1.06, l: 0.23 }, corps: 0.94, longFiletee: 0.36 },
   '1/2': { bourrelet: { d: 1.20, l: 0.25 }, corps: 1.06, longFiletee: 0.43 },
   '3/4': { bourrelet: { d: 1.46, l: 0.27 }, corps: 1.32, longFiletee: 0.50 },
 };
@@ -84,6 +89,8 @@ export const RACCORDS_NPT = {
     nomAnglais: 'Nipple',
     // Tuyau schedule 40 fileté aux deux bouts ; la longueur se choisit.
     tailles: {
+      '1/4': { longueurs: [0.875, 1.5, 2, 3, 4, 6] },
+      '3/8': { longueurs: [1, 1.5, 2, 3, 4, 6] },
       '1/2': { longueurs: [1.125, 1.5, 2, 2.5, 3, 4, 6] },
       '3/4': { longueurs: [1.375, 1.5, 2, 2.5, 3, 4, 6] },
     },
@@ -109,9 +116,15 @@ export const RACCORDS_NPT = {
   reducteur: {
     nom: 'Réducteur hexagonal',
     nomAnglais: 'Hex bushing (M × F)',
+    feminin: false,
     // Clé « mâle|femelle ». Plan McMaster 44605K346.
     tailles: {
       '3/4|1/2': { hexagone: 1 + 5 / 32, longueur: 0.85, longHex: 0.29, mcmaster: '44605K346' },
+      '3/4|3/8': { hexagone: 1 + 5 / 32, longueur: 0.85, longHex: 0.29, mcmaster: '44605K345' },
+      '3/4|1/4': { hexagone: 1 + 5 / 32, longueur: 0.85, longHex: 0.29, mcmaster: '44605K344' },
+      // 1/2 × 3/8 et 1/2 × 1/4 : pas offerts en fonte chez McMaster ; cotes estimées.
+      '1/2|3/8': { hexagone: 15 / 16, longueur: 0.72, longHex: 0.25 },
+      '1/2|1/4': { hexagone: 15 / 16, longueur: 0.72, longHex: 0.25 },
     },
   },
 };

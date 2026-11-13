@@ -39,3 +39,14 @@ Filets NPT : 14 filets/po pour 1/2 et 3/4, conicité 1:16, filet à 60°.
 - Réducteur hexagonal 3/4 M × 1/2 F (44605K346) : hexagone 1 5/32 sur plats, longueur 0,85, hexagone ≈ 0,29 de long
 - Capuchon classe 150 (4778K144 / 4778K145, forme identique en NPT) : longueur 0,75 / 0,87 ; bourrelet Ø 1,20 / 1,46, ≈ 0,18 / 0,20 de long ; nervure de moulage
 - Bouchon à tête carrée (4627K333 / 4627K334) : carré 9/16 / 5/8 ; longueur 0,94 / 1,25 ; filetage 0,56 / 0,62
+
+# Raccords de tube (catalogue Boston Weatherhead fourni, laiton)
+- Tube cuivre recuit 5/16 et 3/8, paroi 0,032
+- Filets d'écrou : SAE 45° et inverted flare (SAE J512) 1/2-20 et 5/8-18 ; compression 1/2-24 et 9/16-24
+- Écrous : SAE 1110 (hex 5/8 et 3/4 ; L 0,88 et 1,00) ; inverted 105 acier (hex 1/2 et 5/8 ; L 0,62 et 0,66) ;
+  compression 61 (hex 9/16 et 5/8 ; L 0,44 et 0,47) ; bague 60 (L 0,25 ; F 0,41 et 0,47) ; arrêt du tube E 0,28 et 0,31
+- Connecteurs (hexagone, longueur) : SAE mâle 48 et femelle 46 ; inverted mâle 202 et femelle 252 (3/8 × 1/4 seulement) ;
+  compression mâle 68 et femelle 66 (longueur avec l'écrou)
+- Filets NPT 1/4 et 3/8 : ASME B1.20.1 (18 filets/po)
+- Réducteurs 3/4 × 1/4 et 3/4 × 3/8 : McMaster 44605K344 / 44605K345 (mêmes cotes que le 3/4 × 1/2) ;
+  1/2 × 1/4 et 1/2 × 3/8 : estimés (hexagone 15/16, longueur 0,72)
