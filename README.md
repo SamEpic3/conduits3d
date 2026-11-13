@@ -12,7 +12,9 @@ En ligne (après activation de GitHub Pages) : https://samepic3.github.io/condui
 3. Clique une pièce pour la **tourner** autour de son joint (45° ou 90°), la brancher par une **autre sortie** ou la **supprimer**.
 4. **Mesure** (M) : clique deux points repères — centre d'un raccord (violet), face d'un raccord ou bout de tuyau (gris) —
    en distance directe ou en écart X, Y ou Z. Les mesures suivent le montage quand on le modifie.
-5. **Coupe** montre l'intérieur ; **Annuler** (Ctrl+Z) revient en arrière.
+5. **Fermer une boucle** : clique deux sorties face à face ; l'app y met le tuyau ou le tube de la bonne longueur
+   (distance entre les faces + les deux engagements). Si on tourne une pièce ensuite, la boucle s'ouvre (avec un avertissement).
+6. **Coupe** montre l'intérieur ; **Annuler** (Ctrl+Z) revient en arrière.
 
 ## Fichiers
 - `index.html` : l'application complète en un seul fichier (fonctionne aussi hors ligne, par double-clic). **Généré** : ne pas modifier à la main.

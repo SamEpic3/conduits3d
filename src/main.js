@@ -16,6 +16,7 @@ const mesures = new Mesures(vue, $('etiquettes'));
 let outil = 'main';
 let cible = null;         // sortie choisie {id, port}
 let selection = null;     // id de la pièce choisie
+let fermeture = null;     // mode « fermer une boucle » : null, ou { premiere: sortie ou null }
 const historique = [];
 
 // ---------------------------------------------------------------------------
@@ -70,7 +71,9 @@ function dessinerAnneaux() {
   anneaux.clear();
   if (outil !== 'main') return;
   for (const s of montage.sortiesLibres()) {
-    const choisi = cible && cible.id === s.id && cible.port === s.port;
+    const choisi = fermeture
+      ? fermeture.premiere && fermeture.premiere.id === s.id && fermeture.premiere.port === s.port
+      : cible && cible.id === s.id && cible.port === s.port;
     const D = s.type.startsWith('cu') ? TUBE_CUIVRE[s.taille].D : s.type.startsWith('tube') ? TUBE[s.taille].D : FILETS_NPT[s.taille].D;
     const r = D / 2 + (s.type.startsWith('tube') ? 0.07 : 0.1);
     const g = new THREE.Group();
@@ -163,6 +166,7 @@ function majPanneau() {
         ${lignes.map(([k, v]) => `<dt>${k}</dt><dd>${fmtPo(v)}</dd>`).join('')}
         ${par ? `<dt>Branchée sur</dt><dd>${nomPiece(par)}</dd>` : '<dt>Position</dt><dd>première pièce</dd>'}
       </dl>`;
+    if (p.fermeture) $('fiche').querySelector('dl').insertAdjacentHTML('beforeend', `<dt>Ferme la boucle avec</dt><dd>${nomPiece(montage.piece(p.fermeture.id))}</dd>`);
     const autres = montage.ports(p).length - 1 - [...montage.occupees(p)].filter(i => i !== p.lien?.portEnfant).length;
     $('btnSortie').disabled = !p.lien || autres < 1;
   }
@@ -215,10 +219,56 @@ function ajouter() {
     : `${nomPiece(p)} ajouté${e_(p)}. Au besoin, tourne la pièce autour du joint avec ↺ ↻.`);
 }
 
+function demarrerFermeture() {
+  if (outil !== 'main') choisirOutil('main');
+  fermeture = { premiere: null };
+  $('btnFermer').classList.add('primary');
+  rafraichir();
+  note('Fermer une boucle : clique la première sortie (anneau orange), puis celle qui lui fait face. Échap pour annuler.');
+}
+
+function arreterFermeture() {
+  fermeture = null;
+  $('btnFermer').classList.remove('primary');
+  rafraichir();
+}
+
+function clicFermeture(s) {
+  if (!fermeture.premiere) {
+    fermeture.premiere = s;
+    rafraichir();
+    note('Première sortie choisie. Clique maintenant la sortie qui lui fait face.');
+    return;
+  }
+  const a = fermeture.premiere;
+  memoriser();
+  const r = montage.fermer(a, s);
+  if (r.erreur) {
+    historique.pop();
+    fermeture.premiere = null;
+    rafraichir();
+    return note(r.erreur, true);
+  }
+  arreterFermeture();
+  selection = r.id; cible = null;
+  rafraichir();
+  const p = montage.piece(r.id);
+  note(`Boucle fermée avec ${r.type === 'mamelon' ? 'un tuyau' : 'un tube'} de ${fmtPo(r.longueur)} (longueur de coupe : distance entre les faces ${fmtPo(r.distance)} + les deux engagements).`);
+  void p;
+}
+
+// Après une modification : les boucles qui ne ferment plus s'ouvrent.
+function apresModification() {
+  const ouvertes = montage.verifierFermetures();
+  if (ouvertes.length) note(`Attention : ${ouvertes.length === 1 ? 'une boucle ne ferme plus' : ouvertes.length + ' boucles ne ferment plus'} (les sorties ne sont plus face à face). Le tuyau reste branché d'un seul côté.`, true);
+  return ouvertes.length;
+}
+
 function tourner(deg) {
   if (!selection) return;
   memoriser();
   montage.tourner(selection, deg);
+  apresModification();
   rafraichir();
 }
 
@@ -227,8 +277,9 @@ function changerSortie() {
   memoriser();
   if (!montage.changerSortie(selection)) { historique.pop(); return note('Cette pièce n\'a pas d\'autre sortie compatible libre.', true); }
   cible = sortieLibre(selection);
+  const ouv = apresModification();
   rafraichir();
-  note('La pièce est maintenant branchée par une autre de ses sorties.');
+  if (!ouv) note('La pièce est maintenant branchée par une autre de ses sorties.');
 }
 
 function supprimer() {
@@ -255,6 +306,7 @@ function annuler() {
 }
 
 function choisirOutil(o) {
+  if (o !== 'main' && fermeture) { fermeture = null; $('btnFermer').classList.remove('primary'); }
   outil = o;
   document.querySelectorAll('[data-outil]').forEach(b => b.classList.toggle('on', b.dataset.outil === o));
   $('modes').hidden = o !== 'mesure';
@@ -293,6 +345,7 @@ $('cv').addEventListener('pointerup', e => {
   const surAnneau = lancer.intersectObjects(anneaux.children, true)[0];
   if (surAnneau) {
     const s = ancetre(surAnneau.object, 'sortie').userData.sortie;
+    if (fermeture) return clicFermeture(s);
     cible = s; selection = s.id;
     const tp = montage.ports(montage.piece(s.id))[s.port].taille;
     if ([...$('selTaille').options].some(o => o.value === tp)) $('selTaille').value = tp;
@@ -317,6 +370,7 @@ $('cv').addEventListener('pointermove', e => {
 // Boutons et clavier
 
 $('btnAjouter').onclick = ajouter;
+$('btnFermer').onclick = () => fermeture ? (arreterFermeture(), note('Fermeture de boucle annulée.')) : demarrerFermeture();
 $('selPiece').onchange = majPanneau;
 $('selTaille').onchange = majPanneau;
 document.querySelectorAll('[data-tourner]').forEach(b => b.onclick = () => tourner(Number(b.dataset.tourner)));
@@ -346,6 +400,7 @@ document.addEventListener('keydown', e => {
   if (e.target.matches('input, select')) return;
   if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z') { e.preventDefault(); annuler(); return; }
   if (e.key === 'Escape') {
+    if (fermeture) { arreterFermeture(); note('Fermeture de boucle annulée.'); return; }
     if (mesures.apercu) { mesures.annulerApercu(); note('Mesure annulée.'); }
     else { selection = null; rafraichir(); }
   }
@@ -356,4 +411,4 @@ document.addEventListener('keydown', e => {
 
 rafraichir();
 $('chargement').hidden = true;
-window.__conduits = { vue, montage, mesures, THREE, ajouter, choisirOutil, tourner, $, choisirSortie: (id, port) => { cible = { id, port }; rafraichir(); } };
+window.__conduits = { vue, montage, mesures, THREE, ajouter, choisirOutil, tourner, $, selectionner: id => { selection = id; rafraichir(); }, choisirSortie: (id, port) => { cible = { id, port }; rafraichir(); }, fermer: (a, b) => { demarrerFermeture(); clicFermeture(a); clicFermeture(b); } };

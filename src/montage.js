@@ -42,7 +42,11 @@ export class Montage {
   occupees(p) {
     const s = new Set();
     if (p.lien) s.add(p.lien.portEnfant);
-    for (const q of this.pieces) if (q.lien?.parent === p.id) s.add(q.lien.port);
+    if (p.fermeture) s.add(p.fermeture.portEnfant);
+    for (const q of this.pieces) {
+      if (q.lien?.parent === p.id) s.add(q.lien.port);
+      if (q.fermeture?.id === p.id) s.add(q.fermeture.port);
+    }
     return s;
   }
 
@@ -116,6 +120,8 @@ export class Montage {
   supprimer(id) {
     const aSupprimer = new Set([id]);
     for (const p of this.pieces) if (p.lien && aSupprimer.has(p.lien.parent)) aSupprimer.add(p.id);
+    // Une pièce qui fermait une boucle sur une pièce supprimée perd seulement ce deuxième lien.
+    for (const p of this.pieces) if (p.fermeture && aSupprimer.has(p.fermeture.id)) delete p.fermeture;
     this.pieces = this.pieces.filter(p => {
       if (!aSupprimer.has(p.id)) return true;
       const o = this.objets.get(p.id);
@@ -158,25 +164,92 @@ export class Montage {
     this.soudures.traverse(o => o.geometry?.dispose());
     this.soudures.clear();
     for (const p of this.pieces) {
-      if (!p.lien) continue;
-      const parent = this.piece(p.lien.parent);
-      const a = this.portMonde(parent, p.lien.port), b = this.portMonde(p, p.lien.portEnfant);
-      const face = a.type.endsWith('-f') ? a : b;
-      if (face.garniture) {
-        // Évasement du tube (SAE, inverted flare), posé dans le raccord.
-        const g = new THREE.Mesh(revolution(face.garniture.profil.map(([r, d]) => [r, -d]), 48, 60), MATERIAUX[face.garniture.materiau]);
-        g.quaternion.setFromUnitVectors(new THREE.Vector3(0, 0, 1), face.sortie);
-        g.position.copy(face.position);
-        this.soudures.add(g);
-        continue;
-      }
-      if (!a.type.startsWith('cu')) continue;
-      const R = TUBE_CUIVRE[face.taille].D / 2;
-      const m = new THREE.Mesh(new THREE.TorusGeometry(R + 0.006, 0.011, 8, 56), MATERIAUX.soudure);
-      m.quaternion.setFromUnitVectors(new THREE.Vector3(0, 0, 1), face.sortie);
-      m.position.copy(face.position).addScaledVector(face.sortie, 0.004);
-      this.soudures.add(m);
+      if (p.lien) this.garnirJoint(this.portMonde(this.piece(p.lien.parent), p.lien.port), this.portMonde(p, p.lien.portEnfant));
+      if (p.fermeture) this.garnirJoint(this.portMonde(this.piece(p.fermeture.id), p.fermeture.port), this.portMonde(p, p.fermeture.portEnfant));
     }
+  }
+
+  // Ce qu'on voit au joint : évasement du tube (SAE, inverted) ou cordon de soudure (cuivre).
+  garnirJoint(a, b) {
+    const face = a.type.endsWith('-f') ? a : b;
+    if (face.garniture) {
+      const g = new THREE.Mesh(revolution(face.garniture.profil.map(([r, d]) => [r, -d]), 48, 60), MATERIAUX[face.garniture.materiau]);
+      g.quaternion.setFromUnitVectors(new THREE.Vector3(0, 0, 1), face.sortie);
+      g.position.copy(face.position);
+      this.soudures.add(g);
+      return;
+    }
+    if (!a.type.startsWith('cu')) return;
+    const R = TUBE_CUIVRE[face.taille].D / 2;
+    const m = new THREE.Mesh(new THREE.TorusGeometry(R + 0.006, 0.011, 8, 56), MATERIAUX.soudure);
+    m.quaternion.setFromUnitVectors(new THREE.Vector3(0, 0, 1), face.sortie);
+    m.position.copy(face.position).addScaledVector(face.sortie, 0.004);
+    this.soudures.add(m);
+  }
+
+  // ---------------------------------------------------------------------------
+  // Boucles fermées
+
+  // Ce qu'il faut pour relier deux sorties face à face : renvoie {type, taille, longueur} ou {erreur}.
+  analyserFermeture(a, b) {
+    const pa = this.piece(a.id), pb = this.piece(b.id);
+    if (!pa || !pb) return { erreur: 'Sortie introuvable.' };
+    if (a.id === b.id) return { erreur: 'Choisis deux sorties de pièces différentes.' };
+    const A = this.portMonde(pa, a.port), B = this.portMonde(pb, b.port);
+    const [fa, ga] = A.type.split('-'), [fb, gb] = B.type.split('-');
+    if (fa !== fb) return { erreur: 'Ces deux sorties ne sont pas de la même famille (NPT, cuivre ou tube) : il faut un adaptateur.' };
+    if (A.taille !== B.taille) return { erreur: `Les grosseurs ne correspondent pas (${A.taille} po et ${B.taille} po) : il faut une réduction.` };
+    if (ga !== 'f' || gb !== 'f') return { erreur: 'Pour fermer une boucle, choisis deux sorties femelles (raccords) : l\'app y mettra le tuyau ou le tube.' };
+    const angle = THREE.MathUtils.radToDeg(A.sortie.angleTo(B.sortie.clone().negate()));
+    if (angle > 0.5) return { erreur: `Les deux sorties ne sont pas dans le même axe : il manque ${angle.toFixed(1).replace('.', ',')}° pour qu'elles se fassent face.` };
+    const v = B.position.clone().sub(A.position), d = v.dot(A.sortie);
+    if (d <= 0) return { erreur: 'Les deux sorties ne se font pas face : elles regardent dans des directions qui s\'éloignent.' };
+    const decalage = v.clone().addScaledVector(A.sortie, -d).length();
+    if (decalage > 0.01) return { erreur: `Les deux sorties sont décalées de ${decalage.toFixed(3).replace('.', ',')} po : elles ne sont pas sur le même axe.`, decalage };
+    const eng = P => P.engagement ?? engagementJoint(P.type, P.taille);
+    const type = { npt: 'mamelon', cu: 'cu-tube', tube: 'tb-tube' }[fa];
+    const longueur = d + eng(A) + eng(B);
+    const min = CATALOGUE[type].longueur.min(A.taille);
+    if (longueur < min - 1e-6) return { erreur: `Il faudrait ${longueur.toFixed(3).replace('.', ',')} po de ${type === 'mamelon' ? 'tuyau' : 'tube'}, mais c'est plus court que le minimum (${min} po).`, longueur };
+    return { type, taille: A.taille, longueur, distance: d };
+  }
+
+  // Ferme une boucle entre deux sorties libres en y mettant le bout de tuyau ou de tube de la bonne longueur.
+  fermer(a, b) {
+    const r = this.analyserFermeture(a, b);
+    if (r.erreur) return r;
+    const res = this.ajouter({ type: r.type, taille: r.taille, longueur: r.longueur }, a);
+    if (res.erreur) return res;
+    const p = this.piece(res.id);
+    p.fermeture = { id: b.id, port: b.port, portEnfant: 1 - p.lien.portEnfant };
+    this.placer();
+    return { id: p.id, ...r };
+  }
+
+  // Après une modification : les boucles suivent (la longueur s'ajuste) ou s'ouvrent si les sorties
+  // ne sont plus face à face. Renvoie la liste des boucles ouvertes.
+  verifierFermetures() {
+    const ouvertes = [];
+    let refaire = false;
+    for (const p of this.pieces) {
+      if (!p.fermeture || !p.lien) continue;
+      const A = this.portMonde(this.piece(p.lien.parent), p.lien.port);
+      const B = this.portMonde(this.piece(p.fermeture.id), p.fermeture.port);
+      const angle = A.sortie.angleTo(B.sortie.clone().negate());
+      const v = B.position.clone().sub(A.position), d = v.dot(A.sortie);
+      const decalage = v.clone().addScaledVector(A.sortie, -d).length();
+      if (angle > THREE.MathUtils.degToRad(0.5) || d <= 0 || decalage > 0.01) { delete p.fermeture; ouvertes.push(p.id); continue; }
+      const eng = P => P.engagement ?? engagementJoint(P.type, P.taille);
+      const L = d + eng(A) + eng(B);
+      if (Math.abs(L - p.longueur) > 1e-4) {
+        p.longueur = L;
+        const o = this.objets.get(p.id);
+        this.groupe.remove(o); o.traverse(x => x.geometry?.dispose()); this.objets.delete(p.id);
+        refaire = true;
+      }
+    }
+    if (refaire) this.placer();
+    return ouvertes;
   }
 
   // Points repères pour la mesure : centre de chaque raccord, faces et bouts de tuyau.
