@@ -34,3 +34,8 @@ Filets NPT : 14 filets/po pour 1/2 et 3/4, conicité 1:16, filet à 60°.
 - Capuchon (617) : fond de 1/8 / 3/16 ; adaptateur C × F (603) : 27/32 / 29/32 de l'arrêt à la face ;
   adaptateur C × M (604) : filetage de 5/8 / 13/16 après l'hexagone
 - Estimés (à confirmer) : grosseur des hexagones des adaptateurs et de l'écrou d'union
+
+# Accessoires NPT (plans McMaster, novembre 2026)
+- Réducteur hexagonal 3/4 M × 1/2 F (44605K346) : hexagone 1 5/32 sur plats, longueur 0,85, hexagone ≈ 0,29 de long
+- Capuchon classe 150 (4778K144 / 4778K145, forme identique en NPT) : longueur 0,75 / 0,87 ; bourrelet Ø 1,20 / 1,46, ≈ 0,18 / 0,20 de long ; nervure de moulage
+- Bouchon à tête carrée (4627K333 / 4627K334) : carré 9/16 / 5/8 ; longueur 0,94 / 1,25 ; filetage 0,56 / 0,62

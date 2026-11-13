@@ -14,7 +14,7 @@ const SEG = 72;
 // ---------------------------------------------------------------------------
 // Bout femelle : (bourrelet,) face, fraisure d'entrée et taraudage conique.
 // Repère local : face dans le plan z = 0, le filet entre vers +Z.
-export function boutFemelle(taille, { phase = 0, bourrelet = true, profondeur, materiaux = { corps: MATERIAUX.fonte, filet: MATERIAUX.filet } } = {}) {
+export function boutFemelle(taille, { phase = 0, bourrelet = true, longBourrelet, profondeur, materiaux = { corps: MATERIAUX.fonte, filet: MATERIAUX.filet } } = {}) {
   const f = FILETS_NPT[taille], fo = FONTE_150[taille];
   const pas = 1 / f.tpi, h = hauteurFilet(f.tpi);
   const rFlanc = z => f.E1 / 2 - z * CONICITE / 2;       // plus étroit en s'enfonçant
@@ -22,7 +22,7 @@ export function boutFemelle(taille, { phase = 0, bourrelet = true, profondeur, m
   const fraisure = 0.035;                                 // fraisure à 45° à l'entrée
   const rFr = rMaj0 + fraisure;
   const B = profondeur ?? fo.longFiletee;
-  const rB = fo.bourrelet.d / 2, lB = fo.bourrelet.l, rC = fo.corps / 2;
+  const rB = fo.bourrelet.d / 2, lB = longBourrelet ?? fo.bourrelet.l, rC = fo.corps / 2;
   const conge = 0.03;
 
   const g = new THREE.Group();
@@ -202,4 +202,64 @@ export function mamelon(taille, longueur) {
   return g;
 }
 
-export const CONSTRUCTEURS_NPT = { manchon, coude90, coude45, te, union, mamelon };
+// Capuchon (cap) : bourrelet, corps et fond bombé ; s'ouvre vers -X.
+export function capuchon(taille) {
+  const c = RACCORDS_NPT.capuchon.tailles[taille];
+  const L = c.longueur;
+  const B = Math.min(FONTE_150[taille].longFiletee, L - 0.22);
+  const g = new THREE.Group(), axe = new THREE.Group();
+  const b = boutFemelle(taille, { longBourrelet: c.bourrelet, profondeur: B });
+  axe.add(b.groupe);
+  const rC = b.corps, rd = rC * 0.45;
+  axe.add(new THREE.Mesh(revolution([
+    [rC, b.debutCorps],
+    ...arrondi([rC, b.debutCorps], [rC, L], [0, L], rd, 10),
+    [0, L],
+  ], SEG, 50), MATERIAUX.fonte));
+  axe.add(new THREE.Mesh(revolution([[0.001, B], [b.alesage, B]], SEG), MATERIAUX.fonte));
+  // Nervure de moulage sur le côté, du bourrelet vers le fond.
+  const lgN = L - b.debutCorps - rd * 0.6;
+  for (const angle of [0, Math.PI]) {
+    const n = nervure(rC, (FONTE_150[taille].bourrelet.d / 2 - rC) * 0.6, lgN + 0.06, angle);
+    n.position.z = b.debutCorps - 0.03 + lgN / 2;
+    axe.add(n);
+  }
+  axe.rotation.y = Math.PI / 2;
+  g.add(axe);
+  g.userData.ports = [port(V(0, 0, 0), V(-1, 0, 0), 'npt-f', taille)];
+  return g;
+}
+
+// Bouchon à tête carrée (plug) : filet mâle conique, tête carrée aux coins arrondis.
+export function bouchon(taille) {
+  const c = RACCORDS_NPT.bouchon.tailles[taille], f = FILETS_NPT[taille];
+  const g = new THREE.Group(), axe = new THREE.Group();
+  axe.add(boutMale(taille, { longueurFiletee: c.filet, rInt: 0.001 }));
+  // Épaulement entre le filet et la tête.
+  axe.add(new THREE.Mesh(revolution([[f.D / 2, c.filet], [0.001, c.filet]], SEG), MATERIAUX.filet));
+  axe.add(new THREE.Mesh(prisme(4, c.carre, c.filet, c.longueur, 0.001, { chanfrein: false, rCoins: c.carre * 0.6 }), MATERIAUX.fonte));
+  axe.rotation.y = Math.PI / 2;
+  g.add(axe);
+  g.userData.ports = [port(V(0, 0, 0), V(-1, 0, 0), 'npt-m', taille)];
+  return g;
+}
+
+// Réducteur hexagonal (bushing) : filet mâle (taille) d'un côté, hexagone taraudé (tailleB) de l'autre.
+export function reducteur(taille, _longueur, tailleB) {
+  const r = RACCORDS_NPT.reducteur.tailles[`${taille}|${tailleB}`];
+  const fm = FILETS_NPT[taille];
+  const g = new THREE.Group(), axe = new THREE.Group();
+  const lf = r.longueur - r.longHex, face = r.longueur;
+  const B = Math.min(r.longueur - 0.12, FONTE_150[tailleB].longFiletee + 0.12);
+  const fem = boutFemelle(tailleB, { bourrelet: false, profondeur: B });
+  axe.add(placer(fem.groupe, V(0, 0, face), V(0, 0, -1)));
+  axe.add(boutMale(taille, { longueurFiletee: lf, rInt: fem.alesage }));
+  axe.add(new THREE.Mesh(revolution([[fem.alesage, face - B], [fem.alesage, 0]], SEG), MATERIAUX.fonte));
+  axe.add(new THREE.Mesh(prisme(6, r.hexagone, lf, face, [fm.D / 2 * 0.97, fem.rFraisure]), MATERIAUX.fonte));
+  axe.rotation.y = Math.PI / 2;
+  g.add(axe);
+  g.userData.ports = [port(V(0, 0, 0), V(-1, 0, 0), 'npt-m', taille), port(V(face, 0, 0), V(1, 0, 0), 'npt-f', tailleB)];
+  return g;
+}
+
+export const CONSTRUCTEURS_NPT = { manchon, coude90, coude45, te, union, mamelon, capuchon, bouchon, reducteur };

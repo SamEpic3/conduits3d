@@ -2,6 +2,7 @@
 // Chaque entrée : nom, nomAnglais, famille, matiere, construire(taille, longueur),
 //   longueur : null, ou { min(taille), suggestions(taille) } pour les tuyaux et tubes coupés sur mesure
 //   centre : true si la pièce a un centre utile pour la mesure
+//   combinaisons : liste des « taille|tailleB » offertes, si toutes ne le sont pas
 //   deuxiemeTaille : étiquette de la 2e grosseur (adaptateurs, réducteurs), sinon absent
 //   fiche(taille, longueur, tailleB) : lignes [étiquette, valeur en po] pour la fiche de la pièce
 import { RACCORDS_NPT, FONTE_150, FILETS_NPT } from 'app/donnees/npt.js';
@@ -39,6 +40,17 @@ export const CATALOGUE = {
   coude45: npt('coude45', { fiche: centreFace('coude45') }),
   te: npt('te', { fiche: centreFace('te') }),
   union: npt('union', { fiche: t => [['Longueur', RACCORDS_NPT.union.tailles[t].longueur], ['Écrou (sur plats)', RACCORDS_NPT.union.tailles[t].octogone]] }),
+
+  capuchon: npt('capuchon', { centre: false, fiche: t => [['Longueur', RACCORDS_NPT.capuchon.tailles[t].longueur], ['Ø du bourrelet', FONTE_150[t].bourrelet.d]] }),
+  bouchon: npt('bouchon', {
+    nom: 'Bouchon à tête carrée', centre: false,
+    fiche: t => [['Longueur', RACCORDS_NPT.bouchon.tailles[t].longueur], ['Tête carrée', RACCORDS_NPT.bouchon.tailles[t].carre], ['Filetage', RACCORDS_NPT.bouchon.tailles[t].filet]],
+  }),
+  reducteur: npt('reducteur', {
+    centre: false, deuxiemeTaille: 'Filet femelle',
+    combinaisons: ['3/4|1/2'],
+    fiche: (t, L, tb) => { const r = RACCORDS_NPT.reducteur.tailles[`${t}|${tb}`]; return [['Longueur', r.longueur], ['Hexagone (sur plats)', r.hexagone]]; },
+  }),
 
   // --- Cuivre à souder ---
   'cu-tube': cu('tube', {

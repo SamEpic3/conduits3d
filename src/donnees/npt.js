@@ -88,4 +88,30 @@ export const RACCORDS_NPT = {
       '3/4': { longueurs: [1.375, 1.5, 2, 2.5, 3, 4, 6] },
     },
   },
+  capuchon: {
+    nom: 'Capuchon',
+    nomAnglais: 'Cap',
+    // Plans McMaster 4778K144 / 4778K145 (classe 150, même forme qu'en NPT)
+    tailles: {
+      '1/2': { longueur: 0.75, bourrelet: 0.18, mcmaster: '4778K144' },
+      '3/4': { longueur: 0.87, bourrelet: 0.20, mcmaster: '4778K145' },
+    },
+  },
+  bouchon: {
+    nom: 'Bouchon',
+    nomAnglais: 'Square head plug',
+    // Plans McMaster 4627K333 / 4627K334 : tête carrée (sur plats), longueur totale, longueur filetée
+    tailles: {
+      '1/2': { carre: 9 / 16, longueur: 0.94, filet: 0.56, mcmaster: '4627K333' },
+      '3/4': { carre: 5 / 8, longueur: 1.25, filet: 0.62, mcmaster: '4627K334' },
+    },
+  },
+  reducteur: {
+    nom: 'Réducteur hexagonal',
+    nomAnglais: 'Hex bushing (M × F)',
+    // Clé « mâle|femelle ». Plan McMaster 44605K346.
+    tailles: {
+      '3/4|1/2': { hexagone: 1 + 5 / 32, longueur: 0.85, longHex: 0.29, mcmaster: '44605K346' },
+    },
+  },
 };

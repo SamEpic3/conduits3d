@@ -173,6 +173,9 @@ function memoriser() {
 function ajouter() {
   const type = $('selPiece').value, taille = $('selTaille').value;
   const tailleB = CATALOGUE[type].deuxiemeTaille ? $('selTailleB').value : undefined;
+  const combos = CATALOGUE[type].combinaisons;
+  if (combos && !combos.includes(`${taille}|${tailleB}`))
+    return note(`Offert seulement en ${combos.map(c => c.replace('|', ' × ')).join(', ')} po (mâle × femelle).`, true);
   let longueur;
   const entree = CATALOGUE[type];
   if (entree.longueur) {

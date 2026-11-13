@@ -102,16 +102,17 @@ export function brancheTe(r, R, y1, conge) {
 
 // Prisme à n pans (hexagone, octogone) le long de Z, de z0 à z1, avec un chanfrein à 30°
 // à chaque bout (comme un écrou) et un trou central de rayon rInt (un nombre, ou [rayon en z0, rayon en z1]).
-// Un plat est tourné vers +Y.
-export function prisme(n, surPlats, z0, z1, rInt) {
+// Un plat est tourné vers +Y. chanfrein : false pour des arêtes vives ; rCoins : arrondit les coins
+// (intersection avec un cylindre de ce rayon, comme une tête de bouchon tournée).
+export function prisme(n, surPlats, z0, z1, rInt, { chanfrein = true, rCoins = Infinity } = {}) {
   const [rI0, rI1] = Array.isArray(rInt) ? rInt : [rInt, rInt];
   const a = surPlats / 2, rCoin = a / Math.cos(Math.PI / n);
-  const rBout = a * 0.94;                          // le chanfrein laisse un cercle sur la face
-  const lc = (rCoin - rBout) * Math.tan(Math.PI / 6);
+  const rBout = chanfrein ? a * 0.94 : rCoin + 1;    // le chanfrein laisse un cercle sur la face
+  const lc = chanfrein ? (rCoin - rBout) * Math.tan(Math.PI / 6) : 0;
   const rPoly = f => {
     const s = 2 * Math.PI / n;
     const rel = ((f - Math.PI / 2) % s + s) % s - s / 2;
-    return a / Math.cos(rel);
+    return Math.min(a / Math.cos(rel), rCoins);
   };
   const rCone = z => Math.min(rBout + (z - z0) / Math.tan(Math.PI / 6), rBout + (z1 - z) / Math.tan(Math.PI / 6));
   const zs = [];
