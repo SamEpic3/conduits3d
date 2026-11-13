@@ -5,6 +5,16 @@ acier NPT (fonte malléable noire), cuivre à souder, raccords de tube SAE 45°,
 
 En ligne (après activation de GitHub Pages) : https://samepic3.github.io/conduits3d/
 
+## Installer comme application (PWA)
+Sur https://samepic3.github.io/conduits3d/ :
+- **Chrome / Edge (ordinateur, Android)** : icône « Installer » dans la barre d'adresse, ou menu ⋮ → Installer l'application.
+- **iPhone / iPad (Safari)** : bouton Partager → « Sur l'écran d'accueil ».
+
+Une fois ouverte une première fois, l'app fonctionne sans Internet.
+Après une mise à jour du site, changer `VERSION` dans `sw.js` pour que les appareils récupèrent la nouvelle version.
+
+Sur téléphone : outils en haut (icônes), panneau en tiroir au bas en portrait (à droite en paysage), repliable avec ▾.
+
 ## Utilisation
 1. Choisis une pièce et clique **Ajouter** : la première pièce se place au centre.
 2. Les **anneaux orange** sont les sorties libres ; clique-en une (elle devient bleue) pour y brancher la pièce suivante.
@@ -35,5 +45,7 @@ En ligne (après activation de GitHub Pages) : https://samepic3.github.io/condui
 ## Modifier
 1. Modifier les fichiers dans `src/`.
 2. `node build.mjs` pour régénérer `index.html` (et `dev.html`).
-3. Vérifier : `node tests/capture.mjs /tmp/capture.png` (capture d'écran avec Chrome)
+3. Changer `VERSION` dans `sw.js`.
+4. Vérifier : `node tests/capture.mjs /tmp/capture.png` (capture d'écran avec Chrome),
+   `node tests/mobile.mjs script.js /tmp/m.png [largeur hauteur]` (format téléphone), `node tests/toucher.mjs` (touchers)
    ou `node tests/scenario.mjs scenario.js /tmp/capture.png` (exécute un script dans la page, puis capture).

@@ -394,6 +394,10 @@ $('cv').addEventListener('pointermove', e => {
 // ---------------------------------------------------------------------------
 // Boutons et clavier
 
+$('btnPanneau').onclick = () => {
+  const replie = document.querySelector('.panel').classList.toggle('replie');
+  $('btnPanneau').setAttribute('aria-expanded', String(!replie));
+};
 $('btnAjouter').onclick = ajouter;
 $('btnImporter').onclick = () => $('fichierTube').click();
 $('fichierTube').onchange = e => { const f = e.target.files[0]; e.target.value = ''; if (f) importerTube(f); };

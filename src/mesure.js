@@ -71,7 +71,7 @@ export class Mesures {
   }
 
   // Point repère le plus proche du curseur (en pixels), ou null.
-  accrocher(x, y, rayonPx = 22) {
+  accrocher(x, y, rayonPx = matchMedia('(pointer: coarse)').matches ? 32 : 22) {
     const { camera, renderer } = this.vue;
     const w = renderer.domElement.clientWidth, h = renderer.domElement.clientHeight;
     let best = null, dmin = rayonPx;

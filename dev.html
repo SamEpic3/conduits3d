@@ -2,7 +2,14 @@
 <html lang="fr-CA">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#1f2327">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Conduits 3D">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icons/icone.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
 <title>Conduits 3D – montages de tuyaux, tubes et raccords</title>
 <style>
 :root{
@@ -28,6 +35,11 @@ body{background:var(--bg);color:var(--fg);font-family:var(--body);font-size:15px
 #etiquettes .etq.apercu{background:#e0560b}
 .panel{position:absolute;top:12px;right:12px;bottom:12px;width:min(310px,calc(100% - 24px));z-index:5;padding:14px;display:flex;flex-direction:column;gap:12px;overflow:auto;
   background:color-mix(in srgb,var(--panel) 94%,transparent);backdrop-filter:blur(6px);border:1px solid var(--line);border-radius:12px;box-shadow:0 6px 22px rgb(0 0 0 / .12)}
+.entete{display:flex;align-items:center;gap:8px}
+.entete h1{flex:1}
+.replier{display:none;padding:6px 12px;font-size:18px;line-height:1}
+.contenu{display:flex;flex-direction:column;gap:12px}
+button,select,input{touch-action:manipulation}
 .panel section{display:grid;gap:8px;border-top:1px solid var(--line);padding-top:10px}
 h1{font:600 22px var(--display);margin:0;letter-spacing:.2px}
 h2{font:600 18px var(--display);margin:0}
@@ -59,7 +71,38 @@ ol.coudes{margin:2px 0 0;padding-left:20px;font:500 12.5px var(--mono)}
   background:color-mix(in srgb,var(--panel) 94%,transparent);border:1px solid var(--line);font-size:14px;text-align:center;box-shadow:0 2px 8px rgb(0 0 0 / .08)}
 #note.erreur{border-color:var(--warn);color:var(--warn)}
 #chargement{position:absolute;inset:0;display:grid;place-items:center;color:var(--muted)}
-@media (max-width:760px){.toolbar{max-width:calc(100% - 20px)} #note{transform:translateX(-50%);max-width:calc(100% - 20px);bottom:auto;top:110px}}
+/* --- Téléphone : plein écran ; outils en haut --- */
+@media (max-width:760px) and (orientation:portrait), (max-height:520px) and (orientation:landscape){
+  body{padding:0}
+  .stage{border-radius:0;height:100dvh}
+  .toolbar{top:calc(env(safe-area-inset-top) + 6px);left:calc(env(safe-area-inset-left) + 6px);right:6px;max-width:none;flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none;gap:2px}
+  .toolbar::-webkit-scrollbar{display:none}
+  .toolbar .txt{display:none}
+  .toolbar button{padding:8px 9px;font-size:16px;min-width:38px;flex:none}
+  .toolbar [data-vue]{font-size:13px;padding:8px 6px}
+  .toolbar .sep{flex:none}
+  #modes{top:calc(env(safe-area-inset-top) + 56px);right:auto}
+  .replier{display:inline-block}
+  .panel.replie .contenu{display:none}
+  .panel.replie .replier{transform:rotate(180deg)}
+  h1{font-size:19px}
+  button{padding:10px 10px;min-height:40px}
+  select,input[type=text]{font-size:16px}
+  #note{font-size:13px;padding:7px 10px;transform:none;max-width:none}
+}
+/* Portrait : le panneau est un tiroir au bas de l'écran. */
+@media (max-width:760px) and (orientation:portrait){
+  .panel{top:auto;left:0;right:0;bottom:0;width:100%;max-height:52dvh;border-radius:14px 14px 0 0;
+    padding:10px 12px calc(10px + env(safe-area-inset-bottom));gap:8px;box-shadow:0 -4px 18px rgb(0 0 0 / .15)}
+  #note{left:8px;right:8px;top:auto;bottom:calc(var(--hauteur-panneau, 60px) + 8px)}
+}
+/* Paysage : le panneau est à droite, sur toute la hauteur. */
+@media (max-height:520px) and (orientation:landscape){
+  .panel{top:6px;right:calc(env(safe-area-inset-right) + 6px);bottom:6px;width:270px;padding:8px 10px;gap:8px}
+  .panel.replie{bottom:auto}
+  .toolbar{right:290px}
+  #note{left:8px;right:290px;top:auto;bottom:8px}
+}
 </style>
 <script type="importmap">{"imports":{"three":"./vendor/three.module.js","three/addons/controls/OrbitControls.js":"./vendor/addons/OrbitControls.js","three/addons/environments/RoomEnvironment.js":"./vendor/addons/RoomEnvironment.js","app/":"./src/"}}</script>
 </head>
@@ -70,11 +113,11 @@ ol.coudes{margin:2px 0 0;padding-left:20px;font:500 12.5px var(--mono)}
   <p id="chargement">Chargement de la 3D…</p>
 
   <div class="toolbar" role="toolbar" aria-label="Outils">
-    <button data-outil="main" class="on" title="Sélection (S) : choisis une sortie ou une pièce">✋ Sélection</button>
-    <button data-outil="mesure" title="Mesure (M) : clique deux points repères">📏 Mesure</button>
+    <button data-outil="main" class="on" title="Sélection (S) : choisis une sortie ou une pièce"><span class="ic">✋</span><span class="txt"> Sélection</span></button>
+    <button data-outil="mesure" title="Mesure (M) : clique deux points repères"><span class="ic">📏</span><span class="txt"> Mesure</span></button>
     <span class="sep"></span>
-    <button id="btnAnnuler" title="Annuler (Ctrl+Z)" disabled>↶ Annuler</button>
-    <button id="btnCoupe" title="Vue en coupe">◧ Coupe</button>
+    <button id="btnAnnuler" title="Annuler (Ctrl+Z)" disabled><span class="ic">↶</span><span class="txt"> Annuler</span></button>
+    <button id="btnCoupe" title="Vue en coupe"><span class="ic">◧</span><span class="txt"> Coupe</span></button>
     <span class="sep"></span>
     <button data-vue="iso" title="Vue 3D">3D</button>
     <button data-vue="face" title="Vue de face">Face</button>
@@ -90,8 +133,11 @@ ol.coudes{margin:2px 0 0;padding-left:20px;font:500 12.5px var(--mono)}
   <p id="note">Choisis une pièce, puis clique « Ajouter » pour commencer le montage.</p>
 
   <aside class="panel">
-    <h1>Conduits 3D</h1>
-    <span class="badge">Étape 4 · raccords de tube</span>
+    <div class="entete">
+      <h1>Conduits 3D</h1>
+      <button id="btnPanneau" class="replier" aria-expanded="true" aria-controls="contenuPanneau" title="Replier ou ouvrir le panneau">▾</button>
+    </div>
+    <div class="contenu" id="contenuPanneau">
 
     <section>
       <h3>Ajouter une pièce</h3>
@@ -177,10 +223,14 @@ ol.coudes{margin:2px 0 0;padding-left:20px;font:500 12.5px var(--mono)}
         <button id="btnToutEffacer" class="danger">Nouveau montage</button>
       </div>
     </section>
+    </div>
   </aside>
 </div>
 <script type="module">
 import 'app/main.js';
+</script>
+<script>
+if ('serviceWorker' in navigator && location.protocol === 'https:') addEventListener('load', () => navigator.serviceWorker.register('sw.js').catch(() => {}));
 </script>
 </body>
 </html>

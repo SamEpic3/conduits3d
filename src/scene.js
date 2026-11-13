@@ -3,6 +3,9 @@ import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 
+// Téléphone en portrait : même règle que le tiroir du bas dans la mise en page CSS.
+export const mobile = () => matchMedia('(max-width:760px) and (orientation:portrait)').matches;
+
 export function creerScene(canvas) {
   const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true, preserveDrawingBuffer: true });
   renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
@@ -40,14 +43,24 @@ export function creerScene(canvas) {
     const { clientWidth: w, clientHeight: h } = canvas.parentElement;
     renderer.setSize(w, h, false);
     camera.aspect = w / h;
-    // Sur un écran large, on décale l'image vers la gauche pour qu'elle ne soit pas sous le panneau.
+    // Le panneau cache une partie de la vue : sur un écran large, il est à droite (on décale l'image vers la gauche) ;
+    // sur un téléphone, c'est un tiroir au bas (on remonte l'image).
     const panneau = document.querySelector('.panel');
-    const decal = panneau && w > 700 ? (panneau.offsetWidth + 12) / 2 : 0;
-    if (decal) camera.setViewOffset(w, h, decal, 0, w, h); else camera.clearViewOffset();
+    let dx = 0, dy = 0;
+    if (panneau) {
+      if (mobile()) dy = Math.min(panneau.offsetHeight, h * 0.6) / 2;
+      else if (w > 700) dx = (panneau.offsetWidth + 12) / 2;
+    }
+    if (dx || dy) camera.setViewOffset(w, h, dx, dy, w, h); else camera.clearViewOffset();
     camera.updateProjectionMatrix();
     demander();
   };
   new ResizeObserver(redimensionner).observe(canvas.parentElement);
+  const panneau = document.querySelector('.panel');
+  if (panneau) new ResizeObserver(() => {
+    canvas.parentElement.style.setProperty('--hauteur-panneau', panneau.offsetHeight + 'px');
+    redimensionner();
+  }).observe(panneau);
 
   return {
     scene, camera, controls, renderer, demander, avantRendu,
@@ -70,7 +83,9 @@ export function creerScene(canvas) {
       const centre = boite.getCenter(new THREE.Vector3());
       const rayon = boite.getSize(new THREE.Vector3()).length() / 2;
       const dir = camera.position.clone().sub(controls.target).normalize();
-      const dist = rayon / Math.sin(THREE.MathUtils.degToRad(camera.fov / 2)) * 1.15;
+      // Le champ le plus étroit (vertical, ou horizontal sur un écran en portrait) décide de la distance.
+      const fv = THREE.MathUtils.degToRad(camera.fov / 2), fh = Math.atan(Math.tan(fv) * camera.aspect);
+      const dist = rayon / Math.sin(Math.min(fv, fh)) * 1.15;
       controls.target.copy(centre);
       camera.position.copy(centre).addScaledVector(dir, dist);
       demander();
