@@ -6,6 +6,7 @@ import { TUBE_CUIVRE } from 'app/donnees/cuivre.js';
 import { TUBE } from 'app/donnees/tube.js';
 import { CATALOGUE } from 'app/catalogue.js';
 import { Montage } from 'app/montage.js';
+import { lireTubeCintre } from 'app/geometrie/cintrage.js';
 import { Mesures, NOMS_MODES, longueurMesure, fmtPo } from 'app/mesure.js';
 
 const $ = id => document.getElementById(id);
@@ -157,7 +158,7 @@ function majPanneau() {
   if (p) {
     const e = CATALOGUE[p.type];
     const par = p.lien && montage.piece(p.lien.parent);
-    const lignes = e.fiche(p.taille, p.longueur, p.tailleB);
+    const lignes = e.fiche(p.taille, p.longueur, p.tailleB, p);
     if (e.famille === 'npt') lignes.push(['Engagement des filets', FILETS_NPT[p.taille].engagement]);
     $('fiche').innerHTML = `
       <h2>${nomPiece(p)}</h2>
@@ -166,6 +167,8 @@ function majPanneau() {
         ${lignes.map(([k, v]) => `<dt>${k}</dt><dd>${fmtPo(v)}</dd>`).join('')}
         ${par ? `<dt>Branchée sur</dt><dd>${nomPiece(par)}</dd>` : '<dt>Position</dt><dd>première pièce</dd>'}
       </dl>`;
+    if (p.cintrage) $('fiche').insertAdjacentHTML('beforeend', `<p class="muted">Coudes (depuis le bout A) :</p><ol class="coudes">${
+      p.cintrage.coudes.map(b => `<li>à ${fmtPo(b.s0)} : ${b.a.toFixed(1).replace('.', ',')}°, rotation ${b.th.toFixed(0)}°</li>`).join('') || '<li>aucun (tube droit)</li>'}</ol>`);
     if (p.fermeture) $('fiche').querySelector('dl').insertAdjacentHTML('beforeend', `<dt>Ferme la boucle avec</dt><dd>${nomPiece(montage.piece(p.fermeture.id))}</dd>`);
     const autres = montage.ports(p).length - 1 - [...montage.occupees(p)].filter(i => i !== p.lien?.portEnfant).length;
     $('btnSortie').disabled = !p.lien || autres < 1;
@@ -262,6 +265,23 @@ function apresModification() {
   const ouvertes = montage.verifierFermetures();
   if (ouvertes.length) note(`Attention : ${ouvertes.length === 1 ? 'une boucle ne ferme plus' : ouvertes.length + ' boucles ne ferment plus'} (les sorties ne sont plus face à face). Le tuyau reste branché d'un seul côté.`, true);
   return ouvertes.length;
+}
+
+// Importe un tube cintré exporté par la cintreuse 3D.
+async function importerTube(fichier) {
+  const d = lireTubeCintre(await fichier.text());
+  if (d.erreur) return note(d.erreur, true);
+  verifierCible();
+  const taille = ['5/16', '3/8'].includes($('selTaille').value) ? $('selTaille').value : (d.tube || '3/8');
+  memoriser();
+  const premier = !montage.pieces.length;
+  const r = montage.ajouter({ type: 'tb-cintre', taille, cintrage: d }, cible);
+  if (r.erreur) { historique.pop(); return note(r.erreur, true); }
+  selection = r.id;
+  cible = sortieLibre(r.id);
+  rafraichir();
+  vue.cadrer(montage.groupe);
+  note(`Tube cintré ${taille} po importé : ${d.coudes.length} coude${d.coudes.length > 1 ? 's' : ''}, longueur développée ${fmtPo(d.longueur)}.${premier ? '' : ' Tourne-le autour du joint au besoin avec ↺ ↻.'}`);
 }
 
 function tourner(deg) {
@@ -370,6 +390,8 @@ $('cv').addEventListener('pointermove', e => {
 // Boutons et clavier
 
 $('btnAjouter').onclick = ajouter;
+$('btnImporter').onclick = () => $('fichierTube').click();
+$('fichierTube').onchange = e => { const f = e.target.files[0]; e.target.value = ''; if (f) importerTube(f); };
 $('btnFermer').onclick = () => fermeture ? (arreterFermeture(), note('Fermeture de boucle annulée.')) : demarrerFermeture();
 $('selPiece').onchange = majPanneau;
 $('selTaille').onchange = majPanneau;
@@ -411,4 +433,4 @@ document.addEventListener('keydown', e => {
 
 rafraichir();
 $('chargement').hidden = true;
-window.__conduits = { vue, montage, mesures, THREE, ajouter, choisirOutil, tourner, $, selectionner: id => { selection = id; rafraichir(); }, choisirSortie: (id, port) => { cible = { id, port }; rafraichir(); }, fermer: (a, b) => { demarrerFermeture(); clicFermeture(a); clicFermeture(b); } };
+window.__conduits = { importerTexte: t => importerTube({ text: async () => t }), vue, montage, mesures, THREE, ajouter, choisirOutil, tourner, $, selectionner: id => { selection = id; rafraichir(); }, choisirSortie: (id, port) => { cible = { id, port }; rafraichir(); }, fermer: (a, b) => { demarrerFermeture(); clicFermeture(a); clicFermeture(b); } };

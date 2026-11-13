@@ -92,6 +92,11 @@ export const CATALOGUE = {
     longueur: { min: () => 0.5, suggestions: () => [3, 4, 6, 8, 12] },
     fiche: (t, L) => [['Longueur de coupe', L], ['Ø extérieur', TUBE[t].D], ['Épaisseur', TUBE[t].paroi]],
   },
+  'tb-cintre': {
+    nom: 'Tube cintré', nomAnglais: 'Bent tube (from the bender)', famille: 'tube', matiere: 'cuivre recuit, cintré à la cintreuse',
+    centre: false, longueur: null, listeTailles: ['5/16', '3/8'], construire: CONSTRUCTEURS_TUBE.tubeCintre,
+    fiche: (t, L, tb, p) => [['Longueur développée', p.cintrage.longueur], ['Rayon de cintrage', p.cintrage.rayon]],
+  },
   ...connecteurs(),
 };
 

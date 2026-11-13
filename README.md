@@ -14,7 +14,9 @@ En ligne (après activation de GitHub Pages) : https://samepic3.github.io/condui
    en distance directe ou en écart X, Y ou Z. Les mesures suivent le montage quand on le modifie.
 5. **Fermer une boucle** : clique deux sorties face à face ; l'app y met le tuyau ou le tube de la bonne longueur
    (distance entre les faces + les deux engagements). Si on tourne une pièce ensuite, la boucle s'ouvre (avec un avertissement).
-6. **Coupe** montre l'intérieur ; **Annuler** (Ctrl+Z) revient en arrière.
+6. **Importer un tube cintré** : dans la cintreuse 3D, onglet Relevé → « Exporter le tube (.json) » ; ici, choisis la sortie
+   (et la grosseur 5/16 ou 3/8), puis « Importer un tube cintré ». Le tube garde ses coudes (rayon 15/16 po).
+7. **Coupe** montre l'intérieur ; **Annuler** (Ctrl+Z) revient en arrière.
 
 ## Fichiers
 - `index.html` : l'application complète en un seul fichier (fonctionne aussi hors ligne, par double-clic). **Généré** : ne pas modifier à la main.

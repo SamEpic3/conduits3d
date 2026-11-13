@@ -46,6 +46,7 @@ dl{display:grid;grid-template-columns:auto 1fr;gap:3px 12px;margin:4px 0 0}
 dt{color:var(--muted)} dd{margin:0;font-family:var(--mono);font-size:13px;align-self:center}
 .muted{color:var(--muted);margin:0;font-size:13.5px}
 .badge{font:600 11px var(--mono);background:var(--copper-soft);color:var(--copper-strong);border-radius:999px;padding:2px 8px;justify-self:start;align-self:flex-start}
+ol.coudes{margin:2px 0 0;padding-left:20px;font:500 12.5px var(--mono)}
 #listeMesures{margin:0;padding-left:18px;font:500 13px var(--mono)}
 #listeMesures:empty{display:none}
 .toolbar{position:absolute;top:10px;left:10px;display:flex;gap:4px;padding:4px;border-radius:10px;background:var(--panel);border:1px solid var(--line);box-shadow:0 2px 8px rgb(0 0 0 / .08);z-index:4;flex-wrap:wrap;max-width:calc(100% - 350px)}
@@ -142,6 +143,8 @@ dt{color:var(--muted)} dd{margin:0;font-family:var(--mono);font-size:13px;align-
         </label>
       </div>
       <button id="btnAjouter" class="primary">＋ Ajouter</button>
+      <button id="btnImporter" title="Poser un tube cintré exporté par la cintreuse 3D (fichier .json)">⤓ Importer un tube cintré</button>
+      <input type="file" id="fichierTube" accept=".json,application/json" hidden>
       <button id="btnFermer" title="Relier deux sorties face à face avec le tuyau ou le tube de la bonne longueur">⟲ Fermer une boucle</button>
       <p class="muted" id="indice"></p>
     </section>
