@@ -26,8 +26,11 @@ function ecart(profil, t) {
 //   hauteur   : profondeur radiale du filet
 //   interieur : true pour un filet femelle (taraudage), false pour un filet mâle
 //   phase     : décalage angulaire du départ du filet (radians)
+//   rMax      : (filet mâle) rayon extérieur du tuyau : les sommets sont tronqués par la surface du tuyau
+//   evanouissement : [zDebut, zFin] (filet mâle) le fond du filet remonte jusqu'à rMax entre ces deux
+//                    hauteurs : ce sont les filets incomplets laissés par le chanfrein de la filière
 // Le filet est à droites : il avance vers +Z en tournant dans le sens trigonométrique.
-export function surfaceFiletee({ z0, z1, rFlanc, pas, hauteur, interieur = false, phase = 0, segments = 72 }) {
+export function surfaceFiletee({ z0, z1, rFlanc, pas, hauteur, interieur = false, phase = 0, segments = 72, rMax = Infinity, evanouissement = null }) {
   const profil = profilFilet(hauteur);
 
   const tours = (z1 - z0) / pas;
@@ -42,8 +45,14 @@ export function surfaceFiletee({ z0, z1, rFlanc, pas, hauteur, interieur = false
     const d = ecart(profil, t);
     // Hors des limites, on écrase le filet sur le plan de coupe (comme un filet coupé net).
     z = THREE.MathUtils.clamp(z, z0, z1);
+    let rr = Math.min(r + d, rMax);
+    if (evanouissement) {
+      const [za, zb] = evanouissement;
+      const k = THREE.MathUtils.clamp((z - za) / (zb - za), 0, 1);
+      rr = Math.max(rr, r - hauteur / 2 + k * (rMax - (r - hauteur / 2)));
+    }
     const a = phi + phase;
-    return [(r + d) * Math.cos(a), (r + d) * Math.sin(a), z];
+    return [rr * Math.cos(a), rr * Math.sin(a), z];
   };
 
   // Chaque segment du profil a ses propres sommets : arêtes nettes entre flancs et plats.
@@ -71,7 +80,7 @@ export function surfaceFiletee({ z0, z1, rFlanc, pas, hauteur, interieur = false
 // Bouche le bout d'un filet : anneau plat dans le plan z, entre le bord en dents de scie
 // du filet et le rayon R. sens = +1 si la face regarde vers +Z, -1 vers -Z.
 // z0, pas, hauteur, rFlanc et phase doivent être les mêmes que pour surfaceFiletee.
-export function bouchonFilet({ z, z0, rFlanc, pas, hauteur, phase = 0, R, sens, segments = 72 }) {
+export function bouchonFilet({ z, z0, rFlanc, pas, hauteur, phase = 0, R, sens, segments = 72, rMax = Infinity }) {
   const profil = profilFilet(hauteur);
   const n = segments * 4;
   const pos = [], idx = [];
@@ -79,7 +88,7 @@ export function bouchonFilet({ z, z0, rFlanc, pas, hauteur, phase = 0, R, sens, 
     const phi = 2 * Math.PI * i / n;
     let t = (z - z0) / pas - phi / (2 * Math.PI);
     t -= Math.floor(t);
-    const r = rFlanc(z) + ecart(profil, t), a = phi + phase;
+    const r = Math.min(rFlanc(z) + ecart(profil, t), rMax), a = phi + phase;
     pos.push(r * Math.cos(a), r * Math.sin(a), z, R * Math.cos(a), R * Math.sin(a), z);
   }
   for (let i = 0; i < n; i++) {

@@ -49,11 +49,21 @@ dt{color:var(--muted)} dd{margin:0;font-family:var(--mono);font-size:13.5px;alig
     <span class="badge">Étape 1 · visionneuse de pièces</span>
     <label>Pièce
       <select id="selPiece">
-        <option value="manchon">Acier NPT – Manchon</option>
+        <optgroup label="Acier NPT (fonte malléable noire)">
+          <option value="manchon">Manchon</option>
+          <option value="coude90">Coude 90°</option>
+          <option value="coude45">Coude 45°</option>
+          <option value="te">Té</option>
+          <option value="union">Union</option>
+          <option value="mamelon">Mamelon</option>
+        </optgroup>
       </select>
     </label>
     <label>Diamètre nominal
       <select id="selTaille"><option>1/2</option><option>3/4</option></select>
+    </label>
+    <label id="lblLongueur" hidden>Longueur du mamelon
+      <select id="selLongueur"></select>
     </label>
     <div class="row">
       <label class="check"><input type="checkbox" id="chkCoupe"> Vue en coupe</label>

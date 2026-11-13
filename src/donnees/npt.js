@@ -9,10 +9,12 @@
 //   E1  : diamètre sur flancs à l'entrée du raccord (serrage à la main)
 //   L1  : engagement serré à la main
 //   L2  : longueur des filets utiles du tuyau
+//   L4  : longueur filetée totale du tuyau (filets incomplets compris)
+//   diInt : diamètre intérieur du tuyau schedule 40
 //   engagement : longueur du tuyau qui entre dans le raccord une fois serré à la clé
 export const FILETS_NPT = {
-  '1/2': { tpi: 14, D: 0.840, E0: 0.75843, E1: 0.77843, L1: 0.320, L2: 0.5337, engagement: 0.50 },
-  '3/4': { tpi: 14, D: 1.050, E0: 0.96768, E1: 0.98887, L1: 0.339, L2: 0.5457, engagement: 0.5625 },
+  '1/2': { tpi: 14, D: 0.840, E0: 0.75843, E1: 0.77843, L1: 0.320, L2: 0.5337, L4: 0.7815, diInt: 0.622, engagement: 0.50 },
+  '3/4': { tpi: 14, D: 1.050, E0: 0.96768, E1: 0.98887, L1: 0.339, L2: 0.5457, L4: 0.7935, diInt: 0.824, engagement: 0.5625 },
 };
 
 // Hauteur d'un filet NPT (profil à 60°, tronqué) : 0,8 × pas.
@@ -70,8 +72,10 @@ export const RACCORDS_NPT = {
     nom: 'Union',
     nomAnglais: 'Union',
     tailles: {
-      '1/2': { longueur: 1.72, octogone: 1.45, bout: 0.43, mcmaster: '44605K492' },
-      '3/4': { longueur: 1.94, octogone: 1.71, bout: 0.55, mcmaster: '44605K493' },
+      // hexagone : bouts sur plats ; octogone : écrou sur plats ; longBout : longueur de chaque hexagone ;
+      // filet : profondeur taraudée (plans McMaster)
+      '1/2': { longueur: 1.72, octogone: 1.45, hexagone: 1.01, longBout: 0.57, filet: 0.43, mcmaster: '44605K492' },
+      '3/4': { longueur: 1.94, octogone: 1.71, hexagone: 1.19, longBout: 0.64, filet: 0.55, mcmaster: '44605K493' },
     },
   },
   mamelon: {

@@ -18,3 +18,11 @@
 
 Formes : bourrelet (« band ») à chaque bout ; corps lisse ; coude 90 à rayon serré ; té avec congés ; union = 2 bouts hexagonaux + écrou octogonal au centre.
 Filets NPT : 14 filets/po pour 1/2 et 3/4, conicité 1:16, filet à 60°.
+
+## Union (mesurée sur le plan 44605K492, échelle = longueur 1,72)
+- Bouts hexagonaux : 1,01 sur plats, 0,57 de long ; écrou octogonal : 1,45 sur plats, 0,58 de long
+- 3/4 : mis à l'échelle avec l'octogone (1,71) et la longueur (1,94) → hexagone 1,19, bouts 0,64
+
+## Mamelons (tuyau schedule 40)
+- Ø int. 0,622 (1/2) et 0,824 (3/4) ; filetage L4 = 0,7815 / 0,7935, dont L2 = 0,5337 / 0,5457 de filets complets
+- Mamelon serré (close) : 1 1/8 (1/2), 1 3/8 (3/4)
