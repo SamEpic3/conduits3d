@@ -89,8 +89,8 @@ function cheminCoude(d1, d2, dist1, dist2, R) {
   return ch;
 }
 
-// Cylindre le long de X (de x0 à x1), rayon r, percé en haut (+Y) d'un trou de rayon rTrou
-// centré en x = 0 (pour le té).
+// Cylindre le long de X (de x0 à x1), rayon r, percé en haut (+Y) d'un trou centré en x = 0
+// (pour le té). rTrou(θ) : rayon du trou selon l'angle autour de la branche (θ = 0 vers +X).
 function cylindrePerce(r, x0, x1, rTrou) {
   const nx = Math.ceil((x1 - x0) / 0.008), nf = 120;
   const pos = [], idx = [];
@@ -101,7 +101,7 @@ function cylindrePerce(r, x0, x1, rTrou) {
   for (let i = 0; i < nx; i++) for (let j = 0; j < nf; j++) {
     const x = x0 + (x1 - x0) * (i + 0.5) / nx, f = 2 * Math.PI * (j + 0.5) / nf;
     const y = r * Math.cos(f), z = r * Math.sin(f);
-    if (y > 0 && x * x + z * z < rTrou * rTrou) continue;
+    if (y > 0 && Math.hypot(x, z) < rTrou(Math.atan2(z, x))) continue;
     const a = i * (nf + 1) + j, b = a + 1, c = a + nf + 1, d = c + 1;
     idx.push(a, b, c, b, d, c);
   }
@@ -112,15 +112,27 @@ function cylindrePerce(r, x0, x1, rTrou) {
   return g;
 }
 
-// Cylindre le long de +Y, rayon r, qui part de l'intersection avec un cylindre horizontal
-// de rayon R (axe X) et monte jusqu'à y1 (la branche du té).
-function cylindreSelle(r, R, y1) {
-  const nf = 120, ny = 24;
+// Branche du té : cylindre le long de +Y, rayon r, qui part du cylindre horizontal de rayon R (axe X)
+// et monte jusqu'à y1. À la jonction, un congé de rayon conge(θ) évase la branche
+// (plein congé dans l'entrejambe, θ = 0 ou π ; rien sur les côtés, où les deux cylindres se rejoignent).
+// Renvoie aussi baseBranche(θ) : rayon de la branche au pied du congé, pour percer le cylindre horizontal.
+function brancheTe(r, R, y1, conge) {
+  const nf = 120, ny = 40;
   const pos = [], idx = [];
+  const pied = f => {
+    const c = conge(f), rb = r + c, z = rb * Math.sin(f);
+    return { c, rb, y0: Math.sqrt(Math.max(0, R * R - z * z)) };
+  };
   for (let j = 0; j <= nf; j++) {
-    const f = 2 * Math.PI * j / nf, x = r * Math.cos(f), z = r * Math.sin(f);
-    const y0 = Math.sqrt(Math.max(0, R * R - z * z));
-    for (let i = 0; i <= ny; i++) pos.push(x, y0 + (y1 - y0) * i / ny, z);
+    const f = 2 * Math.PI * j / nf, { c, y0 } = pied(f);
+    for (let i = 0; i <= ny; i++) {
+      // Rangées serrées dans le congé, puis le reste de la branche.
+      const k = i / ny;
+      const y = k < 0.5 ? y0 + c * (k / 0.5) : y0 + c + (y1 - y0 - c) * ((k - 0.5) / 0.5);
+      const dy = y0 + c - y;
+      const rr = dy > 0 && c > 0 ? r + c - Math.sqrt(Math.max(0, c * c - dy * dy)) : r;
+      pos.push(rr * Math.cos(f), y, rr * Math.sin(f));
+    }
   }
   for (let j = 0; j < nf; j++) for (let i = 0; i < ny; i++) {
     const a = j * (ny + 1) + i, b = a + 1, c = a + ny + 1, d = c + 1;
@@ -130,7 +142,7 @@ function cylindreSelle(r, R, y1) {
   g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
   g.setIndex(idx);
   g.computeVertexNormals();
-  return g;
+  return { geo: g, baseBranche: f => pied(f).rb };
 }
 
 // Prisme à n pans (hexagone, octogone) le long de Z, de z0 à z1, avec un chanfrein à 30°
@@ -229,10 +241,12 @@ function coude(taille, A, d1, d2, rayon) {
   return g;
 }
 
-// Coude 90° : sorties vers +X et +Y. Rayon de cintrage du corps mesuré sur le plan McMaster (0,56 po en 1/2).
+// Coude 90° : sorties vers +X et +Y. Le corps est cintré d'un bourrelet à l'autre :
+// l'intérieur de la courbe garde un bon rayon (≈ 0,3 po), comme sur les vrais coudes.
 export function coude90(taille) {
-  const A = RACCORDS_NPT.coude90.tailles[taille].centreFace, rC = FONTE_150[taille].corps / 2;
-  return coude(taille, A, V(1, 0, 0), V(0, 1, 0), Math.max(A * 0.5, rC + 0.02));
+  const A = RACCORDS_NPT.coude90.tailles[taille].centreFace;
+  const deb = boutFemelle(taille).debutCorps;
+  return coude(taille, A, V(1, 0, 0), V(0, 1, 0), A - deb);
 }
 
 // Coude 45° : sorties vers +X et à 135° (le tuyau dévie de 45°). Le corps est cintré d'un bourrelet à l'autre.
@@ -255,10 +269,14 @@ export function te(taille) {
   });
   const b0 = bouts[0];
   const rC = b0.corps, dc = A - b0.debutCorps, ra = b0.alesage, di = A - b0.profondeur;
-  g.add(new THREE.Mesh(cylindrePerce(rC, -dc, dc, rC - 0.006), MATERIAUX.fonte));
-  g.add(new THREE.Mesh(cylindreSelle(rC, rC, dc), MATERIAUX.fonte));
-  g.add(new THREE.Mesh(cylindrePerce(ra, -di, di, ra - 0.004), MATERIAUX.fonte));
-  g.add(new THREE.Mesh(cylindreSelle(ra, ra, di), MATERIAUX.fonte));
+  // Congés de fonderie : plein congé dans l'entrejambe, nul sur les côtés.
+  const congeExt = f => rC * 0.42 * Math.cos(f) ** 2;
+  const congeInt = f => ra * 0.35 * Math.cos(f) ** 2;
+  const ext = brancheTe(rC, rC, dc, congeExt), int = brancheTe(ra, ra, di, congeInt);
+  g.add(new THREE.Mesh(cylindrePerce(rC, -dc, dc, f => ext.baseBranche(f) - 0.006), MATERIAUX.fonte));
+  g.add(new THREE.Mesh(ext.geo, MATERIAUX.fonte));
+  g.add(new THREE.Mesh(cylindrePerce(ra, -di, di, f => int.baseBranche(f) - 0.004), MATERIAUX.fonte));
+  g.add(new THREE.Mesh(int.geo, MATERIAUX.fonte));
   g.userData.ports = dirs.map(d => port(d.clone().multiplyScalar(A), d, 'npt-f', taille));
   return g;
 }
