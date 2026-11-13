@@ -12,8 +12,12 @@ En ligne (après activation de GitHub Pages) : https://samepic3.github.io/condui
 3. Clique une pièce pour la **tourner** autour de son joint (45° ou 90°), la brancher par une **autre sortie** ou la **supprimer**.
 4. **Mesure** (M) : clique deux points repères — centre d'un raccord (violet), face d'un raccord ou bout de tuyau (gris) —
    en distance directe ou en écart X, Y ou Z. Les mesures suivent le montage quand on le modifie.
-5. **Fermer une boucle** : clique deux sorties face à face ; l'app y met le tuyau ou le tube de la bonne longueur
-   (distance entre les faces + les deux engagements). Si on tourne une pièce ensuite, la boucle s'ouvre (avec un avertissement).
+5. **Fermer une boucle** :
+   - deux raccords face à face : l'app y met le tuyau ou le tube de la bonne longueur (distance entre les faces + les deux engagements) ;
+   - le bout libre d'un tube (ex. : tube cintré importé) puis un raccord : l'app cherche la rotation du tube autour de son joint
+     qui l'aligne, et accepte si le bout arrive au bon endroit (tolérance 1/16 po et 2°), sinon elle dit de combien il est trop
+     long, trop court, décalé ou désaligné. En fileté NPT, il faut une union (on ne visse pas les deux bouts d'un tuyau).
+   Si on tourne une pièce ensuite, la boucle s'ouvre (avec un avertissement).
 6. **Importer un tube cintré** : dans la cintreuse 3D, onglet Relevé → « Exporter le tube (.json) » ; ici, choisis la sortie
    (et la grosseur 5/16 ou 3/8), puis « Importer un tube cintré ». Le tube garde ses coudes (rayon 15/16 po).
 7. **Coupe** montre l'intérieur ; **Annuler** (Ctrl+Z) revient en arrière.

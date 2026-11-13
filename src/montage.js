@@ -134,7 +134,7 @@ export class Montage {
   vider() { for (const p of [...this.pieces]) if (!p.lien) this.supprimer(p.id); this.seq = 0; }
 
   // Calcule la position de chaque pièce (les parents sont toujours avant leurs enfants).
-  placer() {
+  placer({ garnitures = true } = {}) {
     for (const p of this.pieces) {
       const o = this.objet(p);
       if (!p.lien) {
@@ -156,7 +156,7 @@ export class Montage {
       }
       o.matrixWorldNeedsUpdate = true;
     }
-    this.dessinerSoudures();
+    if (garnitures) this.dessinerSoudures();
     this.groupe.updateMatrixWorld(true);
   }
 
@@ -200,7 +200,8 @@ export class Montage {
     const [fa, ga] = A.type.split('-'), [fb, gb] = B.type.split('-');
     if (fa !== fb) return { erreur: 'Ces deux sorties ne sont pas de la même famille (NPT, cuivre ou tube) : il faut un adaptateur.' };
     if (A.taille !== B.taille) return { erreur: `Les grosseurs ne correspondent pas (${A.taille} po et ${B.taille} po) : il faut une réduction.` };
-    if (ga !== 'f' || gb !== 'f') return { erreur: 'Pour fermer une boucle, choisis deux sorties femelles (raccords) : l\'app y mettra le tuyau ou le tube.' };
+    if (ga !== gb) return { joindre: true };
+    if (ga !== 'f') return { erreur: 'Deux bouts mâles ne se raccordent pas : choisis un bout et un raccord, ou deux raccords (l\'app y mettra le tuyau ou le tube).' };
     const angle = THREE.MathUtils.radToDeg(A.sortie.angleTo(B.sortie.clone().negate()));
     if (angle > 0.5) return { erreur: `Les deux sorties ne sont pas dans le même axe : il manque ${angle.toFixed(1).replace('.', ',')}° pour qu'elles se fassent face.` };
     const v = B.position.clone().sub(A.position), d = v.dot(A.sortie);
@@ -219,6 +220,7 @@ export class Montage {
   fermer(a, b) {
     const r = this.analyserFermeture(a, b);
     if (r.erreur) return r;
+    if (r.joindre) return this.joindre(a, b);
     const res = this.ajouter({ type: r.type, taille: r.taille, longueur: r.longueur }, a);
     if (res.erreur) return res;
     const p = this.piece(res.id);
@@ -227,13 +229,90 @@ export class Montage {
     return { id: p.id, ...r };
   }
 
+  // Écart entre un bout mâle et l'endroit où il devrait arriver dans un raccord femelle.
+  //   axial > 0 : le bout va trop loin (trop long) ; axial < 0 : il n'arrive pas (trop court)
+  ecartJoint(M, F) {
+    const eng = F.engagement ?? engagementJoint(F.type, F.taille);
+    const attendu = F.position.clone().addScaledVector(F.sortie, -eng);
+    const e = M.position.clone().sub(attendu), entree = F.sortie.clone().negate();
+    const axial = e.dot(entree);
+    return {
+      axial, lateral: e.addScaledVector(entree, -axial).length(),
+      angle: THREE.MathUtils.radToDeg(M.sortie.angleTo(entree)),
+    };
+  }
+
+  static TOLERANCE = { axial: 1 / 16, lateral: 1 / 16, angle: 2 };
+  static dansTolerance(e) {
+    const t = Montage.TOLERANCE;
+    return Math.abs(e.axial) <= t.axial && e.lateral <= t.lateral && e.angle <= t.angle;
+  }
+
+  // Joint un bout mâle déjà posé (ex. : bout d'un tube cintré) à un raccord libre.
+  // On cherche d'abord la rotation de la pièce autour de son joint qui aligne le mieux le bout.
+  joindre(a, b) {
+    const pa = this.piece(a.id), pb = this.piece(b.id);
+    const A = this.portMonde(pa, a.port);
+    const [m, f, pm] = A.type.endsWith('-m') ? [a, b, pa] : [b, a, pb];
+    const famille = A.type.split('-')[0];
+    if (famille === 'npt')
+      return { erreur: 'En fileté, on ne peut pas visser les deux bouts d\'un tuyau en même temps : pour fermer une boucle, il faut une union.' };
+    if (pm.fermeture) return { erreur: 'Cette pièce ferme déjà une boucle.' };
+    const ecart = () => this.ecartJoint(this.portMonde(pm, m.port), this.portMonde(this.piece(f.id), f.port));
+    const score = e => Math.abs(e.axial) + e.lateral + e.angle / 30;
+    // La pièce ne peut pas tourner sur elle-même si le raccord visé est en aval d'elle.
+    const angle0 = pm.angle;
+    let meilleur = { angle: angle0, e: ecart() };
+    if (!this.estDescendant(f.id, pm.id)) {
+      const essayer = ang => { pm.angle = ((ang % 360) + 360) % 360; this.placer({ garnitures: false }); const e = ecart(); if (score(e) < score(meilleur.e)) meilleur = { angle: pm.angle, e }; };
+      for (let ang = 0; ang < 360; ang += 1) essayer(ang);
+      const centre = meilleur.angle;
+      for (let d = -1; d <= 1; d += 0.05) essayer(centre + d);
+    }
+    pm.angle = meilleur.angle;
+    this.placer();
+    const e = meilleur.e;
+    if (!Montage.dansTolerance(e)) {
+      pm.angle = angle0;
+      this.placer();
+      return { erreur: Montage.expliquer(e), ecart: e };
+    }
+    pm.fermeture = { id: f.id, port: f.port, portEnfant: m.port, joint: true };
+    this.placer();
+    let rot = ((meilleur.angle - angle0) % 360 + 540) % 360 - 180;
+    return { id: pm.id, joint: true, ecart: e, rotation: Math.abs(rot) > 0.01 ? rot : 0 };
+  }
+
+  estDescendant(id, ancetre) {
+    let p = this.piece(id);
+    while (p?.lien) { if (p.lien.parent === ancetre) return true; p = this.piece(p.lien.parent); }
+    return false;
+  }
+
+  // Explique pourquoi le bout n'arrive pas dans le raccord (meilleure orientation trouvée).
+  static expliquer(e) {
+    const po = v => `${v.toFixed(3).replace('.', ',')} po`;
+    const t = Montage.TOLERANCE, raisons = [];
+    if (e.axial > t.axial) raisons.push(`trop long de ${po(e.axial)}`);
+    if (e.axial < -t.axial) raisons.push(`trop court de ${po(-e.axial)}`);
+    if (e.lateral > t.lateral) raisons.push(`décalé de ${po(e.lateral)} sur le côté`);
+    if (e.angle > t.angle) raisons.push(`désaligné de ${e.angle.toFixed(1).replace('.', ',')}°`);
+    return `Le bout n'arrive pas dans le raccord, même en tournant la pièce : ${raisons.join(', ')}. (Tolérance : 1/16 po et 2°.)`;
+  }
+
   // Après une modification : les boucles suivent (la longueur s'ajuste) ou s'ouvrent si les sorties
   // ne sont plus face à face. Renvoie la liste des boucles ouvertes.
   verifierFermetures() {
     const ouvertes = [];
     let refaire = false;
     for (const p of this.pieces) {
-      if (!p.fermeture || !p.lien) continue;
+      if (!p.fermeture) continue;
+      if (p.fermeture.joint) {
+        const e = this.ecartJoint(this.portMonde(p, p.fermeture.portEnfant), this.portMonde(this.piece(p.fermeture.id), p.fermeture.port));
+        if (!Montage.dansTolerance(e)) { delete p.fermeture; ouvertes.push(p.id); }
+        continue;
+      }
+      if (!p.lien) continue;
       const A = this.portMonde(this.piece(p.lien.parent), p.lien.port);
       const B = this.portMonde(this.piece(p.fermeture.id), p.fermeture.port);
       const angle = A.sortie.angleTo(B.sortie.clone().negate());

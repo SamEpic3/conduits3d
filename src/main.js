@@ -227,7 +227,7 @@ function demarrerFermeture() {
   fermeture = { premiere: null };
   $('btnFermer').classList.add('primary');
   rafraichir();
-  note('Fermer une boucle : clique la première sortie (anneau orange), puis celle qui lui fait face. Échap pour annuler.');
+  note('Fermer une boucle : clique deux raccords face à face (l\'app ajoute le tuyau ou le tube), ou le bout libre d\'un tube puis le raccord où il doit entrer. Échap pour annuler.');
 }
 
 function arreterFermeture() {
@@ -240,7 +240,7 @@ function clicFermeture(s) {
   if (!fermeture.premiere) {
     fermeture.premiere = s;
     rafraichir();
-    note('Première sortie choisie. Clique maintenant la sortie qui lui fait face.');
+    note('Première sortie choisie. Clique maintenant le raccord (ou le bout) à relier.');
     return;
   }
   const a = fermeture.premiere;
@@ -256,6 +256,11 @@ function clicFermeture(s) {
   selection = r.id; cible = null;
   rafraichir();
   const p = montage.piece(r.id);
+  if (r.joint) {
+    const e = r.ecart, po = v => `${Math.abs(v).toFixed(3).replace('.', ',')} po`;
+    return note(`Boucle fermée : le bout arrive dans le raccord (écart ${po(e.axial)} en profondeur, ${po(e.lateral)} sur le côté, ${e.angle.toFixed(1).replace('.', ',')}°).`
+      + (r.rotation ? ` La pièce a été tournée de ${r.rotation.toFixed(1).replace('.', ',')}° autour de son joint pour s'aligner.` : ''));
+  }
   note(`Boucle fermée avec ${r.type === 'mamelon' ? 'un tuyau' : 'un tube'} de ${fmtPo(r.longueur)} (longueur de coupe : distance entre les faces ${fmtPo(r.distance)} + les deux engagements).`);
   void p;
 }
@@ -395,6 +400,7 @@ $('fichierTube').onchange = e => { const f = e.target.files[0]; e.target.value =
 $('btnFermer').onclick = () => fermeture ? (arreterFermeture(), note('Fermeture de boucle annulée.')) : demarrerFermeture();
 $('selPiece').onchange = majPanneau;
 $('selTaille').onchange = majPanneau;
+$('btnTournerDe').onclick = () => { const v = Number($('txtAngle').value.replace(',', '.')); if (Number.isFinite(v) && v) tourner(v); };
 document.querySelectorAll('[data-tourner]').forEach(b => b.onclick = () => tourner(Number(b.dataset.tourner)));
 $('btnSortie').onclick = changerSortie;
 $('btnSupprimer').onclick = supprimer;
