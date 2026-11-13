@@ -370,6 +370,51 @@ function detacher() {
   note(`${nomPiece(p)} détaché${e_(p)} : glisse-${CATALOGUE[p.type].feminin ? 'la' : 'le'} avec les flèches. Près d'une sortie compatible (1/2 po), ${CATALOGUE[p.type].feminin ? 'elle' : 'il'} se branche quand tu lâches.`);
 }
 
+// ---------------------------------------------------------------------------
+// Enregistrer et ouvrir un montage
+
+function enregistrer() {
+  if (!montage.pieces.length) return note('Le montage est vide : rien à enregistrer.', true);
+  const date = new Date().toISOString().slice(0, 10);
+  let nom = prompt('Nom du fichier :', `montage-${date}`);
+  if (nom === null) return;
+  nom = (nom.trim() || `montage-${date}`).replace(/[\\/:*?"<>|]/g, '-').replace(/\.json$/i, '') + '.json';
+  const donnees = {
+    format: 'conduits3d-montage', version: 1, date: new Date().toISOString(),
+    pieces: montage.pieces, seq: montage.seq,
+    mesures: mesures.liste.map(m => ({ mode: m.mode, ca: m.ca, cb: m.cb })),
+  };
+  const url = URL.createObjectURL(new Blob([JSON.stringify(donnees, null, 1)], { type: 'application/json' }));
+  const a = Object.assign(document.createElement('a'), { href: url, download: nom });
+  document.body.append(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 2000);
+  note(`Montage enregistré : ${nom} (${montage.pieces.length} pièce${montage.pieces.length > 1 ? 's' : ''}).`);
+}
+
+function ouvrirTexte(texte) {
+  let d;
+  try { d = JSON.parse(texte); } catch { return note('Ce fichier n\'est pas un montage lisible (JSON invalide).', true); }
+  if (d?.format === 'tube-cintre') return note('Ce fichier est un tube cintré : utilise plutôt « Importer un tube cintré ».', true);
+  if (d?.format !== 'conduits3d-montage' || !Array.isArray(d.pieces)) return note('Ce fichier n\'est pas un montage de Conduits 3D.', true);
+  const inconnu = d.pieces.find(p => !CATALOGUE[p.type]);
+  if (inconnu) return note(`Ce montage contient une pièce inconnue (« ${inconnu.type} ») : il vient peut-être d'une version plus récente de l'app.`, true);
+  memoriser();
+  const avant = montage.etat();
+  try {
+    montage.restaurer(JSON.stringify({ pieces: d.pieces, seq: d.seq ?? Math.max(0, ...d.pieces.map(p => p.id)) }));
+  } catch (err) {
+    montage.restaurer(avant); historique.pop();
+    return note('Impossible d\'ouvrir ce montage : ' + err.message, true);
+  }
+  mesures.effacer();
+  const V = () => new THREE.Vector3();
+  mesures.liste = (d.mesures || []).map(m => ({ mode: m.mode, ca: m.ca, cb: m.cb, a: V(), b: V() }));
+  cible = null; selection = null;
+  rafraichir();
+  vue.cadrer(montage.groupe);
+  note(`Montage ouvert : ${montage.pieces.length} pièce${montage.pieces.length > 1 ? 's' : ''}${mesures.liste.length ? `, ${mesures.liste.length} mesure${mesures.liste.length > 1 ? 's' : ''}` : ''}. (Annuler pour revenir au montage d'avant.)`);
+}
+
 function annuler() {
   const h = historique.pop();
   if (!h) return;
@@ -523,6 +568,9 @@ document.querySelectorAll('[data-tourner]').forEach(b => b.onclick = () => tourn
 $('btnSortie').onclick = changerSortie;
 $('btnSupprimer').onclick = supprimer;
 $('btnDetacher').onclick = detacher;
+$('btnEnregistrer').onclick = enregistrer;
+$('btnOuvrir').onclick = () => $('fichierMontage').click();
+$('fichierMontage').onchange = async e => { const f = e.target.files[0]; e.target.value = ''; if (f) ouvrirTexte(await f.text()); };
 $('btnAnnuler').onclick = annuler;
 document.querySelectorAll('[data-outil]').forEach(b => b.onclick = () => choisirOutil(b.dataset.outil));
 document.querySelectorAll('[data-mode]').forEach(b => b.onclick = () => {
@@ -546,6 +594,8 @@ $('btnToutEffacer').onclick = () => {
 document.addEventListener('keydown', e => {
   if (e.target.matches('input, select')) return;
   if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z') { e.preventDefault(); annuler(); return; }
+  if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's') { e.preventDefault(); enregistrer(); return; }
+  if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'o') { e.preventDefault(); $('fichierMontage').click(); return; }
   if (e.key === 'Escape') {
     if (glisse) { finGlisse(true); return; }
     if (fermeture) { arreterFermeture(); note('Fermeture de boucle annulée.'); return; }
@@ -559,4 +609,4 @@ document.addEventListener('keydown', e => {
 
 rafraichir();
 $('chargement').hidden = true;
-window.__conduits = { fleches, importerTexte: t => importerTube({ text: async () => t }), vue, montage, mesures, THREE, ajouter, choisirOutil, tourner, $, detacher, deplacer: (id, axe, d) => { selection = id; rafraichir(); const etat = montage.debutDeplacement(id); memoriser(); glisse = { axe, etat, d, candidat: null }; montage.deplacer(etat, AXES[axe].dir.clone().multiplyScalar(d)); glisse.candidat = montage.candidatAccrochage(etat.ids); finGlisse(); }, selectionner: id => { selection = id; rafraichir(); }, choisirSortie: (id, port) => { cible = { id, port }; rafraichir(); }, fermer: (a, b) => { demarrerFermeture(); clicFermeture(a); clicFermeture(b); } };
+window.__conduits = { fleches, ouvrirTexte, importerTexte: t => importerTube({ text: async () => t }), vue, montage, mesures, THREE, ajouter, choisirOutil, tourner, $, detacher, deplacer: (id, axe, d) => { selection = id; rafraichir(); const etat = montage.debutDeplacement(id); memoriser(); glisse = { axe, etat, d, candidat: null }; montage.deplacer(etat, AXES[axe].dir.clone().multiplyScalar(d)); glisse.candidat = montage.candidatAccrochage(etat.ids); finGlisse(); }, selectionner: id => { selection = id; rafraichir(); }, choisirSortie: (id, port) => { cible = { id, port }; rafraichir(); }, fermer: (a, b) => { demarrerFermeture(); clicFermeture(a); clicFermeture(b); } };

@@ -1,0 +1,23 @@
+// Enregistre un montage (avec une mesure), puis le rouvre dans une page neuve.
+import { chromium } from 'playwright';
+import { readFileSync } from 'node:fs';
+const nav = await chromium.launch({ executablePath: '/usr/bin/google-chrome', args: ['--use-angle=swiftshader','--enable-unsafe-swiftshader'] });
+const ctx = await nav.newContext({ viewport: { width: 1200, height: 800 }, acceptDownloads: true });
+const err = [];
+const ouvrir = async () => { const p = await ctx.newPage(); p.on('pageerror', e => err.push(e.message)); await p.goto('file:///home/claude/conduits3d/index.html'); await p.waitForFunction(() => window.__conduits); return p; };
+let page = await ouvrir();
+await page.evaluate(() => { const C = window.__conduits, $ = C.$;
+  const aj = (type, taille, L) => { $('selPiece').value = type; $('selPiece').onchange(); $('selTaille').value = taille; if (L) $('txtLongueur').value = L; C.ajouter(); };
+  aj('coude90','1/2'); aj('mamelon','1/2','4'); aj('te','1/2'); C.selectionner(3); C.detacher(); C.deplacer(3, 2, 2);
+  const r = C.montage.pointsReperes(); C.mesures.liste.push({ mode: 'd', ca: '1:c', cb: '3:c', a: r[0].p, b: r[0].p }); C.mesures.actualiser(r, false); });
+page.once('dialog', d => d.accept('mon montage'));
+const [dl] = await Promise.all([page.waitForEvent('download'), page.click('#btnEnregistrer')]);
+const chemin = '/tmp/t/' + dl.suggestedFilename(); await dl.saveAs(chemin);
+const avant = await page.evaluate(() => [window.__conduits.$('listeMesures').textContent, window.__conduits.montage.pieces.length]);
+page = await ouvrir();
+await page.setInputFiles('#fichierMontage', chemin);
+await page.waitForTimeout(500);
+const apres = await page.evaluate(() => [window.__conduits.$('listeMesures').textContent, window.__conduits.montage.pieces.length, window.__conduits.$('note').textContent]);
+await page.screenshot({ path: '/tmp/t/ouvert.png' });
+console.log(dl.suggestedFilename(), JSON.stringify(avant), JSON.stringify(apres), err.join('\n') || 'ok');
+await nav.close();

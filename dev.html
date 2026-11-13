@@ -238,6 +238,17 @@ ol.coudes{margin:2px 0 0;padding-left:20px;font:500 12.5px var(--mono)}
       <p class="muted" id="mesVide">Outil Mesure : clique deux points repères (centre d'un raccord en violet, face ou bout de tuyau en gris).</p>
       <div class="row">
         <button id="btnEffMesures" disabled>Effacer les mesures</button>
+      </div>
+    </section>
+
+    <section>
+      <h3>Fichier</h3>
+      <div class="row">
+        <button id="btnEnregistrer" title="Télécharge le montage et ses mesures dans un fichier .json">💾 Enregistrer</button>
+        <button id="btnOuvrir" title="Ouvre un montage enregistré">📂 Ouvrir</button>
+        <input type="file" id="fichierMontage" accept=".json,application/json" hidden>
+      </div>
+      <div class="row">
         <button id="btnToutEffacer" class="danger">Nouveau montage</button>
       </div>
     </section>

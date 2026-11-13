@@ -36,7 +36,9 @@ Sur téléphone : outils en haut (icônes), panneau en tiroir au bas en portrait
    Si on tourne une pièce ensuite, la boucle s'ouvre (avec un avertissement).
 7. **Importer un tube cintré** : dans la cintreuse 3D, onglet Relevé → « Exporter le tube (.json) » ; ici, choisis la sortie
    (et la grosseur 5/16 ou 3/8), puis « Importer un tube cintré ». Le tube garde ses coudes (rayon 15/16 po).
-8. **Coupe** montre l'intérieur ; **Annuler** (Ctrl+Z) revient en arrière.
+8. **Enregistrer** (Ctrl+S) télécharge le montage et ses mesures dans un fichier `.json` ; **Ouvrir** (Ctrl+O) le recharge
+   (Annuler revient au montage d'avant). Sur iPhone, le fichier va dans l'app Fichiers.
+9. **Coupe** montre l'intérieur ; **Annuler** (Ctrl+Z) revient en arrière.
 
 ## Fichiers
 - `index.html` : l'application complète en un seul fichier (fonctionne aussi hors ligne, par double-clic). **Généré** : ne pas modifier à la main.
