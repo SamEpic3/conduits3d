@@ -139,6 +139,7 @@ function majPanneau() {
   remplir($('selTaille'), entree.listeTailles);
   if (entree.listeTaillesB) remplir($('selTailleB'), entree.listeTaillesB);
   $('lblLongueur').hidden = !entree.longueur;
+  $('lblTailleTexte').textContent = entree.premiereTaille ?? 'Diamètre nominal';
   $('lblTailleB').hidden = !entree.deuxiemeTaille;
   if (entree.deuxiemeTaille) $('lblTailleBTexte').textContent = entree.deuxiemeTaille;
   if (entree.longueur) $('longueursStd').innerHTML = entree.longueur.suggestions($('selTaille').value)
