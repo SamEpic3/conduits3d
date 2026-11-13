@@ -38,7 +38,10 @@ Sur téléphone : outils en haut (icônes), panneau en tiroir au bas en portrait
    (et la grosseur 5/16 ou 3/8), puis « Importer un tube cintré ». Le tube garde ses coudes (rayon 15/16 po).
 8. **Enregistrer** (Ctrl+S) télécharge le montage et ses mesures dans un fichier `.json` ; **Ouvrir** (Ctrl+O) le recharge
    (Annuler revient au montage d'avant). Sur iPhone, le fichier va dans l'app Fichiers.
-9. **Coupe** montre l'intérieur ; **Annuler** (Ctrl+Z) revient en arrière.
+9. **Ortho** (O) bascule entre la perspective et la vue orthogonale (sans perspective, comme un dessin technique).
+10. **Image** exporte un PNG : vue (actuelle, 3D, face, dessus, côté), projection, format, mesures ou non, coupe ou non,
+    fond blanc ou transparent. Les anneaux des sorties, les flèches et la surbrillance n'y sont jamais.
+11. **Coupe** montre l'intérieur ; **Annuler** (Ctrl+Z) revient en arrière.
 
 ## Fichiers
 - `index.html` : l'application complète en un seul fichier (fonctionne aussi hors ligne, par double-clic). **Généré** : ne pas modifier à la main.

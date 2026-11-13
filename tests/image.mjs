@@ -1,0 +1,22 @@
+// Bascule ortho et export d'image (aperçu + téléchargement).
+import { chromium } from 'playwright';
+const nav = await chromium.launch({ executablePath: '/usr/bin/google-chrome', args: ['--use-angle=swiftshader','--enable-unsafe-swiftshader'] });
+const ctx = await nav.newContext({ viewport: { width: 1200, height: 800 }, acceptDownloads: true });
+const page = await ctx.newPage(); const err = []; page.on('pageerror', e => err.push(e.message));
+await page.goto('file:///home/claude/conduits3d/index.html');
+await page.waitForFunction(() => window.__conduits);
+await page.evaluate(() => { const C = window.__conduits, $ = C.$;
+  const aj = (type, taille, L) => { $('selPiece').value = type; $('selPiece').onchange(); $('selTaille').value = taille; if (L) $('txtLongueur').value = L; C.ajouter(); };
+  aj('coude90','1/2'); aj('mamelon','1/2','4'); aj('te','1/2'); aj('mamelon','1/2','3'); aj('coude90','1/2');
+  const r = C.montage.pointsReperes(); C.mesures.liste.push({ mode: 'd', ca: '1:c', cb: '3:c', a: r[0].p, b: r[0].p }); C.choisirOutil('main'); C.selectionner(3); });
+await page.click('#btnOrtho'); await page.waitForTimeout(300);
+await page.screenshot({ path: '/tmp/t/ortho.png' });
+await page.click('#btnImage'); await page.waitForTimeout(300);
+await page.selectOption('#imgVue', 'iso'); await page.check('#imgCoupe'); await page.waitForTimeout(300);
+await page.screenshot({ path: '/tmp/t/dialogue.png' });
+const [dl] = await Promise.all([page.waitForEvent('download'), page.click('#btnTelecharger')]);
+await dl.saveAs('/tmp/t/' + dl.suggestedFilename());
+await page.waitForTimeout(300);
+await page.screenshot({ path: '/tmp/t/apres.png' });
+console.log(dl.suggestedFilename(), await page.evaluate(() => [window.__conduits.vue.orthogonale, window.__conduits.fleches.groupe.visible]), err.join('\n') || 'ok');
+await nav.close();

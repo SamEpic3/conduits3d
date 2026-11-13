@@ -120,6 +120,14 @@ export class Mesures {
   annulerApercu() { this.apercu = null; this.dessiner(true); }
   effacer() { this.liste = []; this.apercu = null; }
 
+  // Position à l'écran (pixels) et texte de l'étiquette de chaque mesure, pour une image exportée.
+  positionsEtiquettes(camera, w, h) {
+    return this.liste.map(m => {
+      const s = geometrie(m).etiquette.clone().project(camera);
+      return s.z > 1 ? null : { x: (s.x + 1) / 2 * w, y: (1 - s.y) / 2 * h, texte: `${SYMB[m.mode]} ${fmtPo(longueurMesure(m))}` };
+    }).filter(Boolean);
+  }
+
   // Étiquettes HTML au milieu de chaque mesure.
   etiquettes() {
     const { camera, renderer } = this.vue;

@@ -68,6 +68,15 @@ ol.coudes{margin:2px 0 0;padding-left:20px;font:500 12.5px var(--mono)}
 .toolbar button.on{background:var(--copper);color:#fff}
 .toolbar .sep{width:1px;align-self:stretch;background:var(--line);margin:4px 2px}
 #modes{top:58px}
+dialog#dlgImage{border:1px solid var(--line);border-radius:14px;padding:0;background:var(--panel);color:var(--fg);width:min(760px,94vw);box-shadow:0 12px 40px rgb(0 0 0 / .3)}
+dialog#dlgImage::backdrop{background:rgb(0 0 0 / .35)}
+.dlg{display:grid;gap:14px;padding:18px}
+.dlg-corps{display:grid;grid-template-columns:230px 1fr;gap:16px;align-items:start}
+.dlg-options{display:grid;gap:10px}
+label.check{display:flex;gap:8px;align-items:center;color:var(--fg);font-size:14px}
+#imgApercu{width:100%;max-height:52vh;object-fit:contain;border:1px solid var(--line);border-radius:8px;
+  background:repeating-conic-gradient(#e3e6e9 0 25%,#fff 0 50%) 0 0/16px 16px}
+@media (max-width:600px){.dlg-corps{grid-template-columns:1fr}#imgApercu{max-height:34vh}}
 #note{position:absolute;left:50%;bottom:14px;transform:translateX(calc(-50% - 160px));z-index:4;max-width:min(560px,calc(100% - 360px));padding:9px 14px;border-radius:10px;margin:0;
   background:color-mix(in srgb,var(--panel) 94%,transparent);border:1px solid var(--line);font-size:14px;text-align:center;box-shadow:0 2px 8px rgb(0 0 0 / .08)}
 #note.erreur{border-color:var(--warn);color:var(--warn)}
@@ -133,6 +142,8 @@ ol.coudes{margin:2px 0 0;padding-left:20px;font:500 12.5px var(--mono)}
     <span class="sep"></span>
     <button id="btnAnnuler" title="Annuler (Ctrl+Z)" disabled><span class="ic">↶</span><span class="txt"> Annuler</span></button>
     <button id="btnCoupe" title="Vue en coupe"><span class="ic">◧</span><span class="txt"> Coupe</span></button>
+    <button id="btnOrtho" title="Vue orthogonale (O) : sans perspective"><span class="ic">⊡</span><span class="txt"> Ortho</span></button>
+    <button id="btnImage" title="Exporter une image (PNG)"><span class="ic">🖼</span><span class="txt"> Image</span></button>
     <span class="sep"></span>
     <button data-vue="iso" title="Vue 3D">3D</button>
     <button data-vue="face" title="Vue de face">Face</button>
@@ -255,6 +266,46 @@ ol.coudes{margin:2px 0 0;padding-left:20px;font:500 12.5px var(--mono)}
     </div>
   </aside>
 </div>
+<dialog id="dlgImage">
+  <form method="dialog" class="dlg">
+    <h2>Exporter une image</h2>
+    <div class="dlg-corps">
+      <div class="dlg-options">
+        <label>Vue
+          <select id="imgVue">
+            <option value="actuelle">Vue actuelle</option>
+            <option value="iso">3D (isométrique)</option>
+            <option value="face">Face</option>
+            <option value="dessus">Dessus</option>
+            <option value="cote">Côté</option>
+          </select>
+        </label>
+        <label>Projection
+          <select id="imgProjection">
+            <option value="persp">Perspective</option>
+            <option value="ortho">Orthogonale</option>
+          </select>
+        </label>
+        <label>Format
+          <select id="imgFormat">
+            <option value="1600x1200">Paysage 4:3 (1600 × 1200)</option>
+            <option value="1920x1080">Paysage 16:9 (1920 × 1080)</option>
+            <option value="1200x1600">Portrait 3:4 (1200 × 1600)</option>
+            <option value="3200x2400">Grand, pour imprimer (3200 × 2400)</option>
+          </select>
+        </label>
+        <label class="check"><input type="checkbox" id="imgMesures" checked> Inclure les mesures</label>
+        <label class="check"><input type="checkbox" id="imgCoupe"> Vue en coupe</label>
+        <label class="check"><input type="checkbox" id="imgFond" checked> Fond blanc (sinon transparent)</label>
+      </div>
+      <img id="imgApercu" alt="Aperçu de l'image">
+    </div>
+    <div class="row">
+      <button value="annuler">Fermer</button>
+      <button id="btnTelecharger" class="primary" value="ok">⤓ Télécharger (PNG)</button>
+    </div>
+  </form>
+</dialog>
 <script type="module">
 import 'app/main.js';
 </script>

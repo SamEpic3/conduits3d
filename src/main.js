@@ -582,6 +582,80 @@ document.querySelectorAll('[data-mode]').forEach(b => b.onclick = () => {
 document.querySelectorAll('[data-vue]').forEach(b => b.onclick = () => vue.vue(b.dataset.vue, montage.groupe));
 let coupe = false;
 $('btnCoupe').onclick = () => { coupe = !coupe; vue.coupe(coupe); $('btnCoupe').classList.toggle('on', coupe); };
+function basculerOrtho() {
+  vue.projection(!vue.orthogonale);
+  $('btnOrtho').classList.toggle('on', vue.orthogonale);
+  placerFleches();
+  note(vue.orthogonale ? 'Vue orthogonale : sans perspective, les lignes parallèles restent parallèles (comme un dessin technique).' : 'Vue en perspective.');
+}
+$('btnOrtho').onclick = basculerOrtho;
+
+// ---------------------------------------------------------------------------
+// Exporter une image : sans anneaux, flèches ni surbrillance ; mesures et coupe au choix.
+
+function rendreImage(echelle = 1) {
+  const [W, H] = $('imgFormat').value.split('x').map(n => Math.round(Number(n) * echelle));
+  const avecMesures = $('imgMesures').checked, nomVue = $('imgVue').value;
+  const etat = vue.etatCamera();
+  const caches = [anneaux, accroche, fleches.groupe].map(o => [o, o.visible]);
+  for (const [o] of caches) o.visible = false;
+  surligner(null);
+  mesures.dessiner(false);
+  mesures.groupe.visible = avecMesures;
+  let toile;
+  try {
+    vue.projection($('imgProjection').value === 'ortho');
+    vue.coupe($('imgCoupe').checked);
+    toile = vue.image(W, H, {
+      fond: $('imgFond').checked ? '#ffffff' : null,
+      preparer: () => { if (nomVue !== 'actuelle') { vue.vue(nomVue, montage.groupe); vue.ajuster(montage.groupe); } },
+      pardessus: mesures.groupe,
+      dessiner2d: (ctx, camera) => {
+        if (!avecMesures) return;
+        const t = Math.round(H / 46);
+        ctx.font = `600 ${t}px "IBM Plex Mono", Menlo, Consolas, monospace`;
+        ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+        for (const e of mesures.positionsEtiquettes(camera, W, H)) {
+          const l = ctx.measureText(e.texte).width + t, h = t * 1.6, y = e.y - h * 0.8;
+          ctx.fillStyle = '#1f56c4';
+          ctx.beginPath(); ctx.roundRect(e.x - l / 2, y - h / 2, l, h, t * 0.4); ctx.fill();
+          ctx.fillStyle = '#fff'; ctx.fillText(e.texte, e.x, y + 1);
+        }
+      },
+    });
+  } finally {
+    vue.restaurerCamera(etat);
+    for (const [o, v] of caches) o.visible = v;
+    mesures.groupe.visible = true;
+    rafraichir();
+  }
+  return toile;
+}
+
+function apercuImage() { $('imgApercu').src = rendreImage(0.4).toDataURL('image/png'); }
+
+$('btnImage').onclick = () => {
+  if (!montage.pieces.length) return note('Le montage est vide : rien à exporter.', true);
+  $('imgProjection').value = vue.orthogonale ? 'ortho' : 'persp';
+  $('imgCoupe').checked = coupe;
+  $('imgMesures').disabled = !mesures.liste.length;
+  $('imgMesures').checked = mesures.liste.length > 0;
+  $('dlgImage').showModal();
+  apercuImage();
+};
+for (const id of ['imgVue', 'imgProjection', 'imgFormat', 'imgMesures', 'imgCoupe', 'imgFond']) $(id).onchange = apercuImage;
+$('btnTelecharger').onclick = e => {
+  e.preventDefault();
+  rendreImage().toBlob(b => {
+    const url = URL.createObjectURL(b);
+    const nom = `montage-${$('imgVue').value}-${new Date().toISOString().slice(0, 10)}.png`;
+    const a = Object.assign(document.createElement('a'), { href: url, download: nom });
+    document.body.append(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 2000);
+    $('dlgImage').close();
+    note(`Image enregistrée : ${nom}.`);
+  }, 'image/png');
+};
 $('btnEffMesures').onclick = () => { mesures.effacer(); rafraichir(); note('Mesures effacées.'); };
 $('btnToutEffacer').onclick = () => {
   if (!montage.pieces.length) return;
@@ -592,7 +666,7 @@ $('btnToutEffacer').onclick = () => {
 };
 
 document.addEventListener('keydown', e => {
-  if (e.target.matches('input, select')) return;
+  if (e.target.matches('input, select') || $('dlgImage').open) return;
   if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z') { e.preventDefault(); annuler(); return; }
   if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's') { e.preventDefault(); enregistrer(); return; }
   if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'o') { e.preventDefault(); $('fichierMontage').click(); return; }
@@ -604,6 +678,7 @@ document.addEventListener('keydown', e => {
   }
   if (e.key === 'Delete' || e.key === 'Backspace') supprimer();
   if (e.key.toLowerCase() === 'm') choisirOutil('mesure');
+  if (e.key.toLowerCase() === 'o' && !e.ctrlKey && !e.metaKey) basculerOrtho();
   if (e.key.toLowerCase() === 's') choisirOutil('main');
 });
 

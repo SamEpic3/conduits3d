@@ -52,8 +52,9 @@ export class Fleches {
   // Taille constante à l'écran : environ 1/8 de la hauteur de la vue.
   echelle() {
     const cam = this.vue.camera;
-    const d = cam.position.distanceTo(this.groupe.position);
-    this.groupe.scale.setScalar(d * Math.tan(THREE.MathUtils.degToRad(cam.fov / 2)) * 0.32);
+    const h = cam.isOrthographicCamera ? cam.top / cam.zoom
+      : cam.position.distanceTo(this.groupe.position) * Math.tan(THREE.MathUtils.degToRad(cam.fov / 2));
+    this.groupe.scale.setScalar(h * 0.32);
     this.groupe.updateMatrixWorld(true);
   }
 
