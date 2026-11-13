@@ -467,6 +467,7 @@ function finGlisse(annule = false) {
   if (!ouv) note(`${n > 1 ? `Morceau de ${n} pièces déplacé` : 'Pièce déplacée'} de ${g.d < 0 ? '−' : ''}${fraction(Math.abs(g.d))} po en ${AXES[g.axe].nom}.`);
 }
 
+$('cv').addEventListener('pointerdown', e => { appui = { x: e.clientX, y: e.clientY }; });
 $('cv').addEventListener('pointerup', e => {
   if (glisse) { finGlisse(); return; }
   if (!appui || Math.hypot(e.clientX - appui.x, e.clientY - appui.y) > 5) { appui = null; return; }

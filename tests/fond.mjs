@@ -1,0 +1,14 @@
+import { chromium } from 'playwright';
+const nav = await chromium.launch({ executablePath: '/usr/bin/google-chrome', args: ['--use-angle=swiftshader','--enable-unsafe-swiftshader'] });
+const page = await nav.newPage({ viewport: { width: 1200, height: 800 } });
+await page.goto('file:///home/claude/conduits3d/index.html');
+await page.waitForFunction(() => window.__conduits);
+await page.evaluate(() => { const C = window.__conduits, $ = C.$;
+  const aj = (type, taille, L) => { $('selPiece').value = type; $('selPiece').onchange(); $('selTaille').value = taille; if (L) $('txtLongueur').value = L; C.ajouter(); };
+  aj('coude90','1/2'); aj('mamelon','1/2','4'); });
+await page.waitForTimeout(300);
+const vis = () => page.evaluate(() => window.__conduits.fleches.groupe.visible);
+console.log('avant', await vis());
+await page.mouse.click(100, 650);
+console.log('après clic fond', await vis(), await page.evaluate(() => [document.elementFromPoint(100,650).id, window.__conduits.$('note').textContent]));
+await nav.close();
