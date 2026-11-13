@@ -2,7 +2,7 @@
 // Mêmes conventions que les raccords NPT : pièces droites sur l'axe X, coudes et té dans le plan XY.
 // Types de sorties : 'cu-f' = douille (le tube entre dedans), 'cu-m' = bout de tube.
 import * as THREE from 'three';
-import { TUBE_CUIVRE, JEU_SOUDURE, RACCORDS_CUIVRE } from 'app/donnees/cuivre.js';
+import { TUBE_CUIVRE, JEU_SOUDURE, RACCORDS_CUIVRE, HEX_ADAPTATEUR } from 'app/donnees/cuivre.js';
 import { FILETS_NPT } from 'app/donnees/npt.js';
 import { revolution, arrondi } from 'app/geometrie/revolution.js';
 import { placer, port, cheminCoude, cylindrePerce, brancheTe, prisme } from 'app/geometrie/formes.js';
@@ -132,38 +132,71 @@ export function capuchon(taille) {
   return g;
 }
 
-// Adaptateur cuivre × NPT femelle : douille, puis hexagone taraudé.
-export function adaptF(taille) {
-  const c = cotes(taille), a = RACCORDS_CUIVRE.adaptF.tailles[taille];
-  const f = FILETS_NPT[taille];
+// Courbe en S (évasement) de [r0, z0] à [r1, z1], pour les adaptateurs.
+function evasement(r0, z0, r1, z1, n = 10) {
+  const pts = [];
+  for (let k = 0; k <= n; k++) {
+    const u = k / n, s = u * u * (3 - 2 * u);
+    pts.push([r0 + (r1 - r0) * s, z0 + (z1 - z0) * u]);
+  }
+  return pts;
+}
+
+// Lèvre et intérieur de la douille, de l'arrêt (z = P) jusqu'à l'extérieur à la face.
+function levreDouille(c) {
+  const { Ri, Ro, P } = c, l = 0.012;
+  return [
+    [c.rbi, P + 0.04], [c.rbi, P], [Ri, P],
+    ...arrondi([Ri, P], [Ri, 0], [Ro, 0], l, 3),
+    ...arrondi([Ri, 0], [Ro, 0], [Ro, P], l, 3),
+  ];
+}
+
+// Adaptateur cuivre × NPT femelle : douille, évasement courbe, hexagone mince taraudé.
+// taille = grosseur du cuivre ; tailleNpt = grosseur du filet.
+export function adaptF(taille, _longueur, tailleNpt = taille) {
+  const c = cotes(taille), a = RACCORDS_CUIVRE.adaptF.tailles[`${taille}|${tailleNpt}`];
+  const f = FILETS_NPT[tailleNpt];
   const face = c.P + a.arretFace;
-  const B = Math.min(a.arretFace - 0.2, f.L1 + 3 / f.tpi);
+  const B = Math.min(a.arretFace - 0.12, f.L1 + 3 / f.tpi);
+  const rH = HEX_ADAPTATEUR.femelle[tailleNpt] / 2;
+  const lh = Math.min(0.3, a.arretFace * 0.4);             // longueur de l'hexagone
   const g = new THREE.Group(), axe = new THREE.Group();
-  axe.add(douille(taille).groupe);
-  const fem = boutFemelle(taille, { bourrelet: false, profondeur: B, materiaux: { corps: MATERIAUX.cuivre, filet: MATERIAUX.filetCuivre } });
+  const fem = boutFemelle(tailleNpt, { bourrelet: false, profondeur: B, materiaux: { corps: MATERIAUX.cuivre, filet: MATERIAUX.filetCuivre } });
+  const rFin = Math.max(rH * 0.985, c.Ro);
+  axe.add(new THREE.Mesh(revolution([
+    [fem.alesage, face - B],
+    ...levreDouille(c),
+    ...evasement(c.Ro, c.P - 0.06, rFin, face - lh + 0.004).slice(0),
+  ].filter((p, i, t) => i === 0 || p[0] !== t[i - 1][0] || p[1] !== t[i - 1][1]), SEG, 40), MATERIAUX.cuivre));
   axe.add(placer(fem.groupe, V(0, 0, face), V(0, 0, -1)));
-  axe.add(new THREE.Mesh(prisme(6, a.hexagone, c.P + 0.03, face, [c.Rb, fem.rFraisure]), MATERIAUX.cuivre));
-  axe.add(new THREE.Mesh(revolution([[fem.alesage, face - B], [c.rbi + 0.0, c.P + EPAULEMENT], [c.rbi, c.P]], SEG), MATERIAUX.cuivre));
+  axe.add(new THREE.Mesh(prisme(6, rH * 2, face - lh, face, [rFin * 0.99, fem.rFraisure]), MATERIAUX.cuivre));
   axe.rotation.y = Math.PI / 2;
   g.add(axe);
-  g.userData.ports = [port(V(0, 0, 0), V(-1, 0, 0), 'cu-f', taille), port(V(face, 0, 0), V(1, 0, 0), 'npt-f', taille)];
+  g.userData.ports = [port(V(0, 0, 0), V(-1, 0, 0), 'cu-f', taille), port(V(face, 0, 0), V(1, 0, 0), 'npt-f', tailleNpt)];
   return g;
 }
 
-// Adaptateur cuivre × NPT mâle : douille, hexagone, puis filet mâle.
-export function adaptM(taille) {
-  const c = cotes(taille), a = RACCORDS_CUIVRE.adaptM.tailles[taille];
-  const f = FILETS_NPT[taille];
-  const z0 = c.P + 0.02, zHex = z0 + a.longHex, bout = zHex + a.filet;
+// Adaptateur cuivre × NPT mâle : douille, évasement courbe, hexagone mince, puis filet mâle.
+export function adaptM(taille, _longueur, tailleNpt = taille) {
+  const c = cotes(taille), a = RACCORDS_CUIVRE.adaptM.tailles[`${taille}|${tailleNpt}`];
+  const f = FILETS_NPT[tailleNpt];
+  const rH = Math.max(HEX_ADAPTATEUR.male[tailleNpt], 2 * c.Ro + 0.1) / 2;
+  const lh = 0.16;
+  const zh0 = c.P + 0.08, zh1 = zh0 + lh, bout = zh1 + a.filet;
   const ri = f.D / 2 - 0.09;
+  const rFin = Math.max(rH * 0.985, c.Ro);
   const g = new THREE.Group(), axe = new THREE.Group();
-  axe.add(douille(taille).groupe);
-  axe.add(new THREE.Mesh(prisme(6, a.hexagone, z0, zHex, [c.Rb, f.D / 2 * 0.97]), MATERIAUX.cuivre));
-  axe.add(placer(boutMale(taille, { longueurFiletee: a.filet, rInt: ri, materiau: MATERIAUX.filetCuivre }), V(0, 0, bout), V(0, 0, -1)));
-  axe.add(new THREE.Mesh(revolution([[ri, bout], [ri, zHex], [c.rbi, c.P + EPAULEMENT], [c.rbi, c.P]], SEG), MATERIAUX.cuivre));
+  axe.add(new THREE.Mesh(revolution([
+    [ri, bout], [ri, zh1], [Math.min(c.rbi, ri), c.P + 0.04],
+    ...levreDouille(c).slice(1),
+    ...evasement(c.Ro, c.P - 0.06, rFin, zh0 + 0.004),
+  ], SEG, 40), MATERIAUX.cuivre));
+  axe.add(new THREE.Mesh(prisme(6, rH * 2, zh0, zh1, [rFin * 0.99, f.D / 2 * 0.97]), MATERIAUX.cuivre));
+  axe.add(placer(boutMale(tailleNpt, { longueurFiletee: a.filet, rInt: ri, materiau: MATERIAUX.filetCuivre }), V(0, 0, bout), V(0, 0, -1)));
   axe.rotation.y = Math.PI / 2;
   g.add(axe);
-  g.userData.ports = [port(V(0, 0, 0), V(-1, 0, 0), 'cu-f', taille), port(V(bout, 0, 0), V(1, 0, 0), 'npt-m', taille)];
+  g.userData.ports = [port(V(0, 0, 0), V(-1, 0, 0), 'cu-f', taille), port(V(bout, 0, 0), V(1, 0, 0), 'npt-m', tailleNpt)];
   return g;
 }
 

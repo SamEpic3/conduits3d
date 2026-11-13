@@ -26,7 +26,7 @@ export class Montage {
   objet(p) {
     let o = this.objets.get(p.id);
     if (!o) {
-      o = CATALOGUE[p.type].construire(p.taille, p.longueur);
+      o = CATALOGUE[p.type].construire(p.taille, p.longueur, p.tailleB);
       o.userData.idPiece = p.id;
       o.matrixAutoUpdate = false;
       this.objets.set(p.id, o);
@@ -67,13 +67,13 @@ export class Montage {
 
   // Ajoute une pièce. cible = {id, port} ou null pour la première pièce.
   // Renvoie {id} ou {erreur}.
-  ajouter({ type, taille, longueur }, cible) {
-    const p = { id: ++this.seq, type, taille, longueur, angle: 0, lien: null };
+  ajouter({ type, taille, longueur, tailleB }, cible) {
+    const p = { id: ++this.seq, type, taille, longueur, tailleB, angle: 0, lien: null };
     if (cible) {
       const parent = this.piece(cible.id);
       const pp = this.ports(parent)[cible.port];
       // Première sortie compatible de la nouvelle pièce.
-      const essai = CATALOGUE[type].construire(taille, longueur);
+      const essai = CATALOGUE[type].construire(taille, longueur, tailleB);
       const ports = essai.userData.ports;
       const i = ports.findIndex(pt => !compatibles(pp, pt));
       essai.traverse(o => o.geometry?.dispose());

@@ -2,7 +2,8 @@
 // Chaque entrée : nom, nomAnglais, famille, matiere, construire(taille, longueur),
 //   longueur : null, ou { min(taille), suggestions(taille) } pour les tuyaux et tubes coupés sur mesure
 //   centre : true si la pièce a un centre utile pour la mesure
-//   fiche(taille, longueur) : lignes [étiquette, valeur en po] pour la fiche de la pièce
+//   deuxiemeTaille : étiquette de la 2e grosseur (adaptateurs, réducteurs), sinon absent
+//   fiche(taille, longueur, tailleB) : lignes [étiquette, valeur en po] pour la fiche de la pièce
 import { RACCORDS_NPT, FONTE_150, FILETS_NPT } from 'app/donnees/npt.js';
 import { RACCORDS_CUIVRE, TUBE_CUIVRE } from 'app/donnees/cuivre.js';
 import { CONSTRUCTEURS_NPT } from 'app/pieces/npt.js';
@@ -61,12 +62,12 @@ export const CATALOGUE = {
     fiche: t => [['Longueur', TUBE_CUIVRE[t].profondeur + RACCORDS_CUIVRE.capuchon.tailles[t].bout]],
   }),
   'cu-adaptF': cu('adaptF', {
-    nom: 'Adaptateur cuivre × NPT femelle', centre: false,
-    fiche: t => [['Arrêt à face NPT', RACCORDS_CUIVRE.adaptF.tailles[t].arretFace], ['Profondeur de douille', TUBE_CUIVRE[t].profondeur]],
+    nom: 'Adaptateur cuivre × NPT femelle', centre: false, deuxiemeTaille: 'Filet NPT femelle',
+    fiche: (t, L, tb) => [['Arrêt à face NPT', RACCORDS_CUIVRE.adaptF.tailles[`${t}|${tb}`].arretFace], ['Profondeur de douille', TUBE_CUIVRE[t].profondeur]],
   }),
   'cu-adaptM': cu('adaptM', {
-    nom: 'Adaptateur cuivre × NPT mâle', centre: false,
-    fiche: t => [['Filetage', RACCORDS_CUIVRE.adaptM.tailles[t].filet], ['Profondeur de douille', TUBE_CUIVRE[t].profondeur]],
+    nom: 'Adaptateur cuivre × NPT mâle', centre: false, deuxiemeTaille: 'Filet NPT mâle',
+    fiche: (t, L, tb) => [['Filetage', RACCORDS_CUIVRE.adaptM.tailles[`${t}|${tb}`].filet], ['Profondeur de douille', TUBE_CUIVRE[t].profondeur]],
   }),
 };
 

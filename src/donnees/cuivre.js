@@ -53,16 +53,29 @@ export const RACCORDS_CUIVRE = {
     // bout : épaisseur du fond, au-delà de l'arrêt du tube (« N »)
     tailles: { '1/2': { bout: 1 / 8 }, '3/4': { bout: 3 / 16 } },
   },
+  // Adaptateurs : clé « cuivre|NPT » (ex. '1/2|3/4' = cuivre 1/2 po × filet 3/4 po NPT).
   adaptF: {
     nom: 'Adaptateur femelle',
     nomAnglais: 'Adapter C × FPT (NIBCO 603)',
-    // arretFace : de l'arrêt du tube à la face femelle (« A ») ; hexagone : sur plats (estimé)
-    tailles: { '1/2': { arretFace: 27 / 32, hexagone: 1.0625 }, '3/4': { arretFace: 29 / 32, hexagone: 1.3125 } },
+    // arretFace : de l'arrêt du tube à la face femelle (« A »)
+    tailles: {
+      '1/2|1/2': { arretFace: 27 / 32 }, '1/2|3/4': { arretFace: 1 },
+      '3/4|1/2': { arretFace: 5 / 8 }, '3/4|3/4': { arretFace: 29 / 32 },
+    },
   },
   adaptM: {
     nom: 'Adaptateur mâle',
     nomAnglais: 'Adapter C × MPT (NIBCO 604)',
-    // filet : longueur filetée après l'hexagone (« B ») ; hexagone : sur plats (estimé)
-    tailles: { '1/2': { filet: 5 / 8, hexagone: 0.9375, longHex: 0.22 }, '3/4': { filet: 13 / 16, hexagone: 1.125, longHex: 0.25 } },
+    // filet : longueur filetée après l'hexagone (« B »)
+    tailles: {
+      '1/2|1/2': { filet: 5 / 8 }, '1/2|3/4': { filet: 31 / 32 },
+      '3/4|1/2': { filet: 27 / 32 }, '3/4|3/4': { filet: 13 / 16 },
+    },
   },
+};
+
+// Hexagone des adaptateurs (sur plats, estimé d'après les photos du catalogue), selon le filet NPT.
+export const HEX_ADAPTATEUR = {
+  femelle: { '1/2': 1.0625, '3/4': 1.3125 },
+  male: { '1/2': 0.9375, '3/4': 1.125 },
 };

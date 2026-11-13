@@ -25,7 +25,7 @@ function note(texte, erreur = false) {
   $('note').classList.toggle('erreur', erreur);
 }
 
-const nomPiece = p => `${CATALOGUE[p.type].nom}${CATALOGUE[p.type].longueur ? ` ${fraction(p.longueur)} po` : ''} (${p.taille} po)`;
+const nomPiece = p => `${CATALOGUE[p.type].nom}${CATALOGUE[p.type].longueur ? ` ${fraction(p.longueur)} po` : ''} (${p.taille}${p.tailleB ? ` × ${p.tailleB}` : ''} po)`;
 
 // Accord : « ajouté » ou « ajoutée » selon la pièce.
 const e_ = p => CATALOGUE[p.type].feminin ? 'e' : '';
@@ -123,6 +123,8 @@ function rafraichir() {
 function majPanneau() {
   const entree = CATALOGUE[$('selPiece').value];
   $('lblLongueur').hidden = !entree.longueur;
+  $('lblTailleB').hidden = !entree.deuxiemeTaille;
+  if (entree.deuxiemeTaille) $('lblTailleBTexte').textContent = entree.deuxiemeTaille;
   if (entree.longueur) $('longueursStd').innerHTML = entree.longueur.suggestions($('selTaille').value)
     .map(l => `<option value="${fraction(l)}">`).join('');
 
@@ -140,7 +142,7 @@ function majPanneau() {
   if (p) {
     const e = CATALOGUE[p.type];
     const par = p.lien && montage.piece(p.lien.parent);
-    const lignes = e.fiche(p.taille, p.longueur);
+    const lignes = e.fiche(p.taille, p.longueur, p.tailleB);
     if (e.famille === 'npt') lignes.push(['Engagement des filets', FILETS_NPT[p.taille].engagement]);
     $('fiche').innerHTML = `
       <h2>${nomPiece(p)}</h2>
@@ -170,6 +172,7 @@ function memoriser() {
 
 function ajouter() {
   const type = $('selPiece').value, taille = $('selTaille').value;
+  const tailleB = CATALOGUE[type].deuxiemeTaille ? $('selTailleB').value : undefined;
   let longueur;
   const entree = CATALOGUE[type];
   if (entree.longueur) {
@@ -184,7 +187,7 @@ function ajouter() {
   verifierCible();
   memoriser();
   const premier = !montage.pieces.length;
-  const r = montage.ajouter({ type, taille, longueur }, cible);
+  const r = montage.ajouter({ type, taille, longueur, tailleB }, cible);
   if (r.erreur) { historique.pop(); return note(r.erreur, true); }
   selection = r.id;
   // On choisit d'emblée une sortie libre de la nouvelle pièce pour continuer le montage.
