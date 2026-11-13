@@ -8,15 +8,18 @@ import { CATALOGUE } from 'app/catalogue.js';
 import { Montage } from 'app/montage.js';
 import { lireTubeCintre } from 'app/geometrie/cintrage.js';
 import { Mesures, NOMS_MODES, longueurMesure, fmtPo } from 'app/mesure.js';
+import { Fleches, AXES } from 'app/fleches.js';
 
 const $ = id => document.getElementById(id);
 const vue = creerScene($('cv'));
 const montage = new Montage(vue.scene);
 const mesures = new Mesures(vue, $('etiquettes'));
+const fleches = new Fleches(vue);
 
 let outil = 'main';
 let cible = null;         // sortie choisie {id, port}
 let selection = null;     // id de la pièce choisie
+let glisse = null;         // déplacement en cours avec une flèche
 let fermeture = null;     // mode « fermer une boucle » : null, ou { premiere: sortie ou null }
 const historique = [];
 
@@ -107,6 +110,38 @@ function surligner(id) {
 }
 
 // ---------------------------------------------------------------------------
+// Flèches de déplacement et repères d'accrochage
+
+function centrePiece(id) {
+  const o = montage.objets.get(id);
+  return o ? new THREE.Box3().setFromObject(o).getCenter(new THREE.Vector3()) : null;
+}
+
+function placerFleches() {
+  const visible = selection && outil === 'main' && !fermeture;
+  fleches.montrer(visible ? centrePiece(selection) : null);
+  if (!glisse) fleches.actif(-1);
+}
+
+const accroche = new THREE.Group();
+vue.scene.add(accroche);
+const matAccroche = new THREE.MeshBasicMaterial({ color: 0x2fbf4a, depthTest: false, transparent: true });
+function montrerAccroche(c) {
+  accroche.traverse(o => o.geometry?.dispose());
+  accroche.clear();
+  if (!c) return;
+  for (const s of [c.m, c.t]) {
+    const pm = montage.portMonde(montage.piece(s.id), s.port);
+    const D = pm.type.startsWith('cu') ? TUBE_CUIVRE[pm.taille].D : pm.type.startsWith('tube') ? TUBE[pm.taille].D : FILETS_NPT[pm.taille].D;
+    const m = new THREE.Mesh(new THREE.TorusGeometry(D / 2 + 0.12, 0.03, 10, 48), matAccroche);
+    m.renderOrder = 998;
+    m.quaternion.setFromUnitVectors(new THREE.Vector3(0, 0, 1), pm.sortie);
+    m.position.copy(pm.position);
+    accroche.add(m);
+  }
+}
+
+// ---------------------------------------------------------------------------
 // Mise à jour générale
 
 // Oublie la sortie choisie si elle n'existe plus ou n'est plus libre.
@@ -121,6 +156,7 @@ function rafraichir() {
   if (selection && !montage.piece(selection)) selection = null;
   dessinerAnneaux();
   surligner(selection);
+  placerFleches();
   mesures.actualiser(montage.pointsReperes(), outil === 'mesure');
   majPanneau();
   vue.demander();
@@ -166,13 +202,14 @@ function majPanneau() {
       <p class="muted">${e.nomAnglais} · ${e.matiere}</p>
       <dl>
         ${lignes.map(([k, v]) => `<dt>${k}</dt><dd>${fmtPo(v)}</dd>`).join('')}
-        ${par ? `<dt>Branchée sur</dt><dd>${nomPiece(par)}</dd>` : '<dt>Position</dt><dd>première pièce</dd>'}
+        ${par ? `<dt>Branchée sur</dt><dd>${nomPiece(par)}</dd>` : `<dt>Position</dt><dd>${!p.ancrage ? 'première pièce' : montage.composante(p.id).size > 1 ? 'base d\'un morceau détaché' : 'seule, détachée'}</dd>`}
       </dl>`;
     if (p.cintrage) $('fiche').insertAdjacentHTML('beforeend', `<p class="muted">Coudes (depuis le bout A) :</p><ol class="coudes">${
       p.cintrage.coudes.map(b => `<li>à ${fmtPo(b.s0)} : ${b.a.toFixed(1).replace('.', ',')}°, rotation ${b.th.toFixed(0)}°</li>`).join('') || '<li>aucun (tube droit)</li>'}</ol>`);
     if (p.fermeture) $('fiche').querySelector('dl').insertAdjacentHTML('beforeend', `<dt>Ferme la boucle avec</dt><dd>${nomPiece(montage.piece(p.fermeture.id))}</dd>`);
     const autres = montage.ports(p).length - 1 - [...montage.occupees(p)].filter(i => i !== p.lien?.portEnfant).length;
     $('btnSortie').disabled = !p.lien || autres < 1;
+    $('btnDetacher').disabled = montage.composante(p.id).size < 2;
   }
 
   // Liste des mesures
@@ -322,6 +359,17 @@ function supprimer() {
   note(`${nomPiece(p)} supprimé${e_(p)}.${detachees ? ' Ce qui était branché dessus reste en place ; pour le rebrancher, utilise « Fermer une boucle ».' : ''}`);
 }
 
+function detacher() {
+  if (!selection) return;
+  const p = montage.piece(selection);
+  if (montage.composante(selection).size < 2) return note('Cette pièce est déjà seule.', true);
+  memoriser();
+  montage.detacher(selection);
+  cible = null;
+  rafraichir();
+  note(`${nomPiece(p)} détaché${e_(p)} : glisse-${CATALOGUE[p.type].feminin ? 'la' : 'le'} avec les flèches. Près d'une sortie compatible (1/2 po), ${CATALOGUE[p.type].feminin ? 'elle' : 'il'} se branche quand tu lâches.`);
+}
+
 function annuler() {
   const h = historique.pop();
   if (!h) return;
@@ -341,7 +389,7 @@ function choisirOutil(o) {
   rafraichir();
   note(o === 'mesure'
     ? 'Mesure : clique deux points repères. Violet = centre d\'un raccord ; gris = face d\'un raccord ou bout de tuyau.'
-    : 'Sélection : clique une sortie (anneau) pour y brancher la prochaine pièce, ou une pièce pour la tourner ou la supprimer.');
+    : 'Sélection : clique une sortie (anneau) pour y brancher la prochaine pièce, ou une pièce pour la tourner, la déplacer avec les flèches ou la supprimer.');
 }
 
 // ---------------------------------------------------------------------------
@@ -357,8 +405,70 @@ function viser(e) {
 const ancetre = (o, cle) => { while (o && o.userData[cle] === undefined) o = o.parent; return o; };
 
 let appui = null;
-$('cv').addEventListener('pointerdown', e => { appui = { x: e.clientX, y: e.clientY }; });
+// Les flèches passent avant la rotation de la vue : on écoute à la capture, sur le parent du canevas.
+$('cv').parentElement.addEventListener('pointerdown', e => {
+  if (e.target !== $('cv') || outil !== 'main' || !selection || fermeture) return;
+  viser(e);
+  const axe = fleches.viser(lancer);
+  if (axe < 0) return;
+  e.stopPropagation();
+  const origine = fleches.groupe.position.clone();
+  const s0 = Fleches.surAxe(lancer, origine, AXES[axe].dir);
+  if (s0 === null) return note('Cette flèche pointe vers toi : tourne un peu la vue pour la glisser.', true);
+  memoriser();
+  glisse = { axe, origine, s0, etat: montage.debutDeplacement(selection), d: 0, candidat: null, id: e.pointerId };
+  $('cv').setPointerCapture(e.pointerId);
+  fleches.actif(axe);
+  appui = null;
+}, { capture: true });
+
+function glisser(e) {
+  viser(e);
+  const s = Fleches.surAxe(lancer, glisse.origine, AXES[glisse.axe].dir);
+  if (s === null) return;
+  const d = Math.round((s - glisse.s0) * 16) / 16;     // au 1/16 po
+  if (d === glisse.d) return;
+  glisse.d = d;
+  montage.deplacer(glisse.etat, AXES[glisse.axe].dir.clone().multiplyScalar(d));
+  glisse.candidat = montage.candidatAccrochage(glisse.etat.ids);
+  montrerAccroche(glisse.candidat);
+  dessinerAnneaux();
+  surligner(selection);
+  fleches.montrer(centrePiece(selection));
+  const c = glisse.candidat;
+  note(`Déplacement en ${AXES[glisse.axe].nom} : ${d < 0 ? '−' : ''}${fraction(Math.abs(d))} po.`
+    + (c ? ` Lâche ici pour brancher sur ${nomPiece(montage.piece(c.t.id))}.` : ''));
+  vue.demander();
+}
+
+function finGlisse(annule = false) {
+  const g = glisse;
+  glisse = null;
+  if (g.id !== undefined && $('cv').hasPointerCapture(g.id)) $('cv').releasePointerCapture(g.id);
+  montrerAccroche(null);
+  if (annule || (!g.d && !g.candidat)) {
+    const h = historique.pop();
+    montage.restaurer(h.etat);
+    rafraichir();
+    if (annule) note('Déplacement annulé.');
+    return;
+  }
+  const n = g.etat.ids.size;
+  if (g.candidat) {
+    const r = montage.accrocher(g.candidat.m, g.candidat.t, g.etat.ids);
+    const ouv = apresModification();
+    rafraichir();
+    if (!ouv) note(`${n > 1 ? 'Morceau branché' : `${nomPiece(montage.piece(r.id))} branché${e_(montage.piece(r.id))}`} sur ${nomPiece(montage.piece(g.candidat.t.id))}.`
+      + (r.joints.length ? ` Un autre bout est arrivé pile dans un raccord : la boucle est fermée.` : ''));
+    return;
+  }
+  const ouv = apresModification();
+  rafraichir();
+  if (!ouv) note(`${n > 1 ? `Morceau de ${n} pièces déplacé` : 'Pièce déplacée'} de ${g.d < 0 ? '−' : ''}${fraction(Math.abs(g.d))} po en ${AXES[g.axe].nom}.`);
+}
+
 $('cv').addEventListener('pointerup', e => {
+  if (glisse) { finGlisse(); return; }
   if (!appui || Math.hypot(e.clientX - appui.x, e.clientY - appui.y) > 5) { appui = null; return; }
   appui = null;
   const pt = viser(e);
@@ -386,7 +496,9 @@ $('cv').addEventListener('pointerup', e => {
   rafraichir();
   if (selection) { const p = montage.piece(selection); note(`${nomPiece(p)} choisi${e_(p)}.`); }
 });
+$('cv').addEventListener('pointercancel', () => { if (glisse) finGlisse(true); });
 $('cv').addEventListener('pointermove', e => {
+  if (glisse) return glisser(e);
   if (outil !== 'mesure' || !mesures.apercu) return;
   const pt = viser(e);
   mesures.survol(pt.x, pt.y);
@@ -409,6 +521,7 @@ $('btnTournerDe').onclick = () => { const v = Number($('txtAngle').value.replace
 document.querySelectorAll('[data-tourner]').forEach(b => b.onclick = () => tourner(Number(b.dataset.tourner)));
 $('btnSortie').onclick = changerSortie;
 $('btnSupprimer').onclick = supprimer;
+$('btnDetacher').onclick = detacher;
 $('btnAnnuler').onclick = annuler;
 document.querySelectorAll('[data-outil]').forEach(b => b.onclick = () => choisirOutil(b.dataset.outil));
 document.querySelectorAll('[data-mode]').forEach(b => b.onclick = () => {
@@ -433,6 +546,7 @@ document.addEventListener('keydown', e => {
   if (e.target.matches('input, select')) return;
   if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z') { e.preventDefault(); annuler(); return; }
   if (e.key === 'Escape') {
+    if (glisse) { finGlisse(true); return; }
     if (fermeture) { arreterFermeture(); note('Fermeture de boucle annulée.'); return; }
     if (mesures.apercu) { mesures.annulerApercu(); note('Mesure annulée.'); }
     else { selection = null; rafraichir(); }
@@ -444,4 +558,4 @@ document.addEventListener('keydown', e => {
 
 rafraichir();
 $('chargement').hidden = true;
-window.__conduits = { importerTexte: t => importerTube({ text: async () => t }), vue, montage, mesures, THREE, ajouter, choisirOutil, tourner, $, selectionner: id => { selection = id; rafraichir(); }, choisirSortie: (id, port) => { cible = { id, port }; rafraichir(); }, fermer: (a, b) => { demarrerFermeture(); clicFermeture(a); clicFermeture(b); } };
+window.__conduits = { fleches, importerTexte: t => importerTube({ text: async () => t }), vue, montage, mesures, THREE, ajouter, choisirOutil, tourner, $, detacher, deplacer: (id, axe, d) => { selection = id; rafraichir(); const etat = montage.debutDeplacement(id); memoriser(); glisse = { axe, etat, d, candidat: null }; montage.deplacer(etat, AXES[axe].dir.clone().multiplyScalar(d)); glisse.candidat = montage.candidatAccrochage(etat.ids); finGlisse(); }, selectionner: id => { selection = id; rafraichir(); }, choisirSortie: (id, port) => { cible = { id, port }; rafraichir(); }, fermer: (a, b) => { demarrerFermeture(); clicFermeture(a); clicFermeture(b); } };

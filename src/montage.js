@@ -151,9 +151,25 @@ export class Montage {
     this.placer();
   }
 
-  // Calcule la position de chaque pièce (les parents sont toujours avant leurs enfants).
+  // Pièces dans un ordre où chaque parent passe avant ses enfants.
+  ordre() {
+    const enfants = new Map(), out = [];
+    for (const p of this.pieces) if (p.lien) {
+      if (!enfants.has(p.lien.parent)) enfants.set(p.lien.parent, []);
+      enfants.get(p.lien.parent).push(p);
+    }
+    const pile = this.pieces.filter(p => !p.lien).reverse();
+    while (pile.length) {
+      const p = pile.pop();
+      out.push(p);
+      for (const e of (enfants.get(p.id) || []).slice().reverse()) pile.push(e);
+    }
+    return out;
+  }
+
+  // Calcule la position de chaque pièce (les parents d'abord).
   placer({ garnitures = true } = {}) {
-    for (const p of this.pieces) {
+    for (const p of this.ordre()) {
       const o = this.objet(p);
       if (!p.lien && p.ancrage) {
         // Morceau détaché : fixé où il était ; la rotation se fait autour d'un axe vertical passant par la pièce.
@@ -211,6 +227,136 @@ export class Montage {
     m.quaternion.setFromUnitVectors(new THREE.Vector3(0, 0, 1), face.sortie);
     m.position.copy(face.position).addScaledVector(face.sortie, 0.004);
     this.soudures.add(m);
+  }
+
+  // ---------------------------------------------------------------------------
+  // Déplacement et assemblage automatique
+
+  // Toutes les pièces reliées à celle-ci (par un joint ou une boucle) : le morceau de montage.
+  composante(id) {
+    const vu = new Set([id]), pile = [id];
+    while (pile.length) {
+      const p = this.piece(pile.pop());
+      const voisins = this.pieces.filter(q => q.lien?.parent === p.id || q.fermeture?.id === p.id).map(q => q.id);
+      if (p.lien) voisins.push(p.lien.parent);
+      if (p.fermeture) voisins.push(p.fermeture.id);
+      for (const v of voisins) if (!vu.has(v)) { vu.add(v); pile.push(v); }
+    }
+    return vu;
+  }
+
+  // Sépare une pièce du montage : elle reste où elle est, seule ; ce qui y était branché reste en place.
+  detacher(id) {
+    const p = this.piece(id);
+    if (!p) return;
+    for (const q of this.pieces) {
+      if (q.lien?.parent === id) { q.ancrage = this.objet(q).matrix.toArray(); q.angle = 0; q.lien = null; }
+      if (q.fermeture?.id === id) delete q.fermeture;
+    }
+    if (p.lien) { p.ancrage = this.objet(p).matrix.toArray(); p.angle = 0; p.lien = null; }
+    delete p.fermeture;
+    this.placer();
+  }
+
+  // Début d'un déplacement : on fige la position de départ de chaque pièce de base du morceau.
+  debutDeplacement(id) {
+    const ids = this.composante(id);
+    const racines = this.pieces.filter(p => ids.has(p.id) && !p.lien);
+    for (const r of racines) if (!r.ancrage) { r.ancrage = this.objet(r).matrix.toArray(); r.angle = 0; }
+    // Une rotation autour de la verticale déjà faite sur une pièce ancrée est intégrée à son ancrage.
+    for (const r of racines) if (r.angle) { r.ancrage = this.objet(r).matrix.toArray(); r.angle = 0; }
+    return { ids, depart: new Map(racines.map(r => [r.id, r.ancrage.slice()])) };
+  }
+
+  // Déplace le morceau de d (THREE.Vector3) par rapport à sa position de départ.
+  deplacer(etat, d) {
+    const t = new THREE.Matrix4().makeTranslation(d.x, d.y, d.z);
+    for (const [id, m0] of etat.depart)
+      this.piece(id).ancrage = t.clone().multiply(new THREE.Matrix4().fromArray(m0)).toArray();
+    this.placer();
+  }
+
+  // Écart entre deux sorties qui pourraient s'emboîter (sans tenir compte de l'orientation).
+  ecartPosition(A, B) {
+    const [M, F] = A.type.endsWith('-m') ? [A, B] : [B, A];
+    const eng = F.engagement ?? engagementJoint(F.type, F.taille);
+    return M.position.distanceTo(F.position.clone().addScaledVector(F.sortie, -eng));
+  }
+
+  // Sortie libre du morceau la plus près d'une sortie libre compatible d'ailleurs (à moins de « rayon »).
+  candidatAccrochage(ids, rayon = Montage.ACCROCHAGE) {
+    const libres = this.sortiesLibres();
+    const dedans = libres.filter(s => ids.has(s.id)), dehors = libres.filter(s => !ids.has(s.id));
+    let meilleur = null;
+    for (const a of dedans) for (const b of dehors) {
+      if (compatibles(a, b)) continue;
+      const d = this.ecartPosition(a, b);
+      if (d <= rayon && (!meilleur || d < meilleur.distance)) meilleur = { m: { id: a.id, port: a.port }, t: { id: b.id, port: b.port }, distance: d };
+    }
+    return meilleur;
+  }
+
+  static ACCROCHAGE = 0.5;
+
+  // Angle (autour de l'axe du joint) qui donne à la pièce l'orientation la plus proche de « cible ».
+  angleConservant(p, cible) {
+    const angle0 = p.angle;
+    p.angle = 0;
+    this.placer({ garnitures: false });
+    const q0 = new THREE.Quaternion().setFromRotationMatrix(this.objet(p).matrix);
+    const qc = new THREE.Quaternion().setFromRotationMatrix(cible);
+    const axe = this.portMonde(this.piece(p.lien.parent), p.lien.port).sortie;
+    const dq = qc.multiply(q0.invert());
+    p.angle = angle0;
+    let a = THREE.MathUtils.radToDeg(2 * Math.atan2(dq.x * axe.x + dq.y * axe.y + dq.z * axe.z, dq.w));
+    return ((a % 360) + 360) % 360;
+  }
+
+  // Branche la sortie m du morceau déplacé (ids) sur la sortie t d'une autre pièce.
+  // Le morceau s'aligne sur le joint en gardant le plus possible son orientation.
+  accrocher(m, t, ids) {
+    const pm = this.piece(m.id);
+    const anciennes = new Map([...ids].map(id => [id, this.objet(this.piece(id)).matrix.clone()]));
+    // Chemin de la pièce jusqu'à la base de son arbre : on inverse les liens pour qu'elle devienne la base.
+    const chemin = [pm];
+    for (let p = pm; p.lien;) { p = this.piece(p.lien.parent); chemin.push(p); }
+    const base = chemin[chemin.length - 1];
+    for (let i = chemin.length - 1; i > 0; i--) {
+      const l = chemin[i - 1].lien;
+      chemin[i].lien = { parent: chemin[i - 1].id, port: l.portEnfant, portEnfant: l.port };
+      delete chemin[i].ancrage;
+    }
+    pm.lien = { parent: t.id, port: t.port, portEnfant: m.port };
+    delete pm.ancrage;
+    pm.angle = this.angleConservant(pm, anciennes.get(pm.id));
+    this.placer({ garnitures: false });
+    // Le reste du morceau suit la pièce comme un bloc rigide.
+    const T = this.objet(pm).matrix.clone().multiply(anciennes.get(pm.id).clone().invert());
+    for (const q of chemin.slice(1)) {
+      q.angle = this.angleConservant(q, T.clone().multiply(anciennes.get(q.id)));
+      this.placer({ garnitures: false });
+    }
+    for (const q of this.pieces)
+      if (ids.has(q.id) && !q.lien && q !== base) { q.ancrage = T.clone().multiply(anciennes.get(q.id)).toArray(); q.angle = 0; }
+    this.placer();
+    // D'autres bouts du morceau qui arrivent maintenant pile dans un raccord : on les joint aussi.
+    const joints = [];
+    const libres = this.sortiesLibres();
+    for (const a of libres) {
+      if (!ids.has(a.id) || !a.type.endsWith('-m') || a.type.startsWith('npt')) continue;
+      const p = this.piece(a.id);
+      if (p.fermeture) continue;
+      for (const b of libres) {
+        if (ids.has(b.id) || compatibles(a, b)) continue;
+        if (!Montage.dansTolerance(this.ecartJoint(a, b))) continue;
+        if (this.occupees(this.piece(b.id)).has(b.port)) continue;
+        p.fermeture = { id: b.id, port: b.port, portEnfant: a.port, joint: true };
+        joints.push(p.id);
+        break;
+      }
+    }
+    if (joints.length) this.placer();
+    return { id: pm.id, joints };
   }
 
   // ---------------------------------------------------------------------------
