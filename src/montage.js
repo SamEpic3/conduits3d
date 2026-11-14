@@ -365,7 +365,7 @@ export class Montage {
       if (p.fermeture) continue;
       for (const b of libres) {
         if (ids.has(b.id) || compatibles(a, b)) continue;
-        if (!Montage.dansTolerance(this.ecartJoint(a, b))) continue;
+        if (!Montage.dansTolerance(this.ecartJoint(a, b), a.type.split('-')[0])) continue;
         if (this.occupees(this.piece(b.id)).has(b.port)) continue;
         p.fermeture = { id: b.id, port: b.port, portEnfant: a.port, joint: true };
         joints.push(p.id);
@@ -550,9 +550,31 @@ export class Montage {
   }
 
   static TOLERANCE = { axial: 1 / 16, lateral: 1 / 16, angle: 2 };
-  static dansTolerance(e) {
-    const t = Montage.TOLERANCE;
+  // Raccords de tube : le tube peut entrer plus ou moins loin (1/4 po) ; on corrige ensuite sa longueur.
+  static TOLERANCE_TUBE = { axial: 1 / 4, lateral: 1 / 16, angle: 2 };
+  static tolerance(famille) { return famille === 'tube' ? Montage.TOLERANCE_TUBE : Montage.TOLERANCE; }
+  static dansTolerance(e, famille) {
+    const t = Montage.tolerance(famille);
     return Math.abs(e.axial) <= t.axial && e.lateral <= t.lateral && e.angle <= t.angle;
+  }
+
+  // Tube cintré joint dans la tolérance : on allonge ou raccourcit son bout droit pour qu'il arrive
+  // pile au fond du raccord (visuel juste, longueur développée corrigée). Renvoie la correction (po).
+  ajusterBoutTube(p, port, axial) {
+    if (!p.cintrage || Math.abs(axial) < 1e-4) return 0;
+    const c = p.cintrage;
+    const d = -axial;                      // > 0 : il faut allonger
+    if (c.longueur + d <= 0.5) return 0;
+    if (port === 1) c.longueur += d;       // bout B : seul le dernier bout droit change
+    else {                                 // bout A : on allonge le début, les coudes glissent d'autant
+      if ((c.coudes[0]?.s0 ?? c.longueur) + d < 0) return 0;
+      c.longueur += d;
+      c.coudes = c.coudes.map(b => ({ ...b, s0: b.s0 + d }));
+    }
+    p.longueur = c.longueur;
+    this.refaireObjet(p);
+    this.placer();
+    return d;
   }
 
   // Joint un bout mâle déjà posé (ex. : bout d'un tube cintré) à un raccord libre.
@@ -579,15 +601,16 @@ export class Montage {
     pm.angle = meilleur.angle;
     this.placer();
     const e = meilleur.e;
-    if (!Montage.dansTolerance(e)) {
+    if (!Montage.dansTolerance(e, famille)) {
       pm.angle = angle0;
       this.placer();
-      return { erreur: Montage.expliquer(e), ecart: e };
+      return { erreur: Montage.expliquer(e, famille), ecart: e };
     }
     pm.fermeture = { id: f.id, port: f.port, portEnfant: m.port, joint: true };
     this.placer();
+    const correction = famille === 'tube' ? this.ajusterBoutTube(pm, m.port, e.axial) : 0;
     let rot = ((meilleur.angle - angle0) % 360 + 540) % 360 - 180;
-    return { id: pm.id, joint: true, ecart: e, rotation: Math.abs(rot) > 0.01 ? rot : 0 };
+    return { id: pm.id, joint: true, ecart: correction ? ecart() : e, correction, rotation: Math.abs(rot) > 0.01 ? rot : 0 };
   }
 
   estDescendant(id, ancetre) {
@@ -597,9 +620,9 @@ export class Montage {
   }
 
   // Explique pourquoi le bout n'arrive pas dans le raccord (meilleure orientation trouvée).
-  static expliquer(e) {
+  static expliquer(e, famille) {
     const po = v => `${v.toFixed(3).replace('.', ',')} po`;
-    const t = Montage.TOLERANCE, raisons = [];
+    const t = Montage.tolerance(famille), raisons = [];
     if (e.axial > t.axial) raisons.push(`trop long de ${po(e.axial)}`);
     if (e.axial < -t.axial) raisons.push(`trop court de ${po(-e.axial)}`);
     if (e.lateral > t.lateral) raisons.push(`décalé de ${po(e.lateral)} sur le côté`);
@@ -607,7 +630,7 @@ export class Montage {
     const conseil = Math.abs(e.axial) > t.axial && e.lateral <= t.lateral && e.angle <= t.angle
       ? ` Les coudes sont bons : seul le dernier bout droit est ${e.axial > 0 ? 'trop long' : 'trop court'}. Dans la cintreuse, refais le tube ${e.axial > 0 ? 'plus court' : 'plus long'} de ${po(Math.abs(e.axial))}, avec les mêmes coudes.`
       : '';
-    return `Le bout n'arrive pas dans le raccord, même en tournant la pièce : ${raisons.join(', ')}. (Tolérance : 1/16 po et 2°.)${conseil}`;
+    return `Le bout n'arrive pas dans le raccord, même en tournant la pièce : ${raisons.join(', ')}. (Tolérance : ${famille === 'tube' ? '1/4 po en profondeur, 1/16 po sur le côté' : '1/16 po'} et 2°.)${conseil}`;
   }
 
   // Après une modification : les boucles suivent (la longueur s'ajuste) ou s'ouvrent si les sorties
@@ -618,8 +641,11 @@ export class Montage {
     for (const p of this.pieces) {
       if (!p.fermeture) continue;
       if (p.fermeture.joint) {
-        const e = this.ecartJoint(this.portMonde(p, p.fermeture.portEnfant), this.portMonde(this.piece(p.fermeture.id), p.fermeture.port));
-        if (!Montage.dansTolerance(e)) { delete p.fermeture; ouvertes.push(p.id); }
+        const M = this.portMonde(p, p.fermeture.portEnfant);
+        const e = this.ecartJoint(M, this.portMonde(this.piece(p.fermeture.id), p.fermeture.port));
+        const fam = M.type.split('-')[0];
+        if (!Montage.dansTolerance(e, fam)) { delete p.fermeture; ouvertes.push(p.id); }
+        else if (fam === 'tube' && Math.abs(e.axial) > 0.002) this.ajusterBoutTube(p, p.fermeture.portEnfant, e.axial);
         continue;
       }
       if (!p.lien) continue;

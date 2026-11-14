@@ -450,7 +450,8 @@ function clicFermeture(s) {
   if (r.joint) {
     const e = r.ecart, po = v => `${Math.abs(v).toFixed(3).replace('.', ',')} po`;
     return note(`Boucle fermée : le bout arrive dans le raccord (écart ${po(e.axial)} en profondeur, ${po(e.lateral)} sur le côté, ${e.angle.toFixed(1).replace('.', ',')}°).`
-      + (r.rotation ? ` La pièce a été tournée de ${r.rotation.toFixed(1).replace('.', ',')}° autour de son joint pour s'aligner.` : ''));
+      + (r.rotation ? ` La pièce a été tournée de ${r.rotation.toFixed(1).replace('.', ',')}° autour de son joint pour s'aligner.` : '')
+      + (r.correction ? ` Le tube a été ${r.correction > 0 ? 'allongé' : 'raccourci'} de ${po(r.correction)} pour arriver au fond du raccord : longueur développée ${fmtPo(p.cintrage.longueur)}.` : ''));
   }
   note(`Boucle fermée avec ${r.type === 'mamelon' ? 'un tuyau' : 'un tube'} de ${fmtPo(r.longueur)} (longueur de coupe : distance entre les faces ${fmtPo(r.distance)} + les deux engagements).`);
   void p;
