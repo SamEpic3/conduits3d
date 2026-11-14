@@ -1,0 +1,30 @@
+// Ajout rapide : familles repliables, formulaire pour la 1re pièce et les tuyaux, ajout direct sinon.
+import { chromium } from 'playwright';
+const nav = await chromium.launch({ executablePath: '/usr/bin/google-chrome', args: ['--use-angle=swiftshader','--enable-unsafe-swiftshader'] });
+const page = await nav.newPage({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true, deviceScaleFactor: 2 });
+page.setDefaultTimeout(120000);
+const err = []; page.on('pageerror', e => err.push(e.message));
+await page.addInitScript(() => localStorage.setItem('conduits3d-vignettes-2', '{}'));
+await page.goto('file:///home/claude/conduits3d/index.html');
+await page.waitForFunction(() => window.__conduits);
+const etat = () => page.evaluate(() => ({ n: window.__conduits.montage.pieces.length, dlg: document.getElementById('dlgPiece').open, note: document.getElementById('note').textContent }));
+const r = [];
+await page.click('.tuile[data-type="coude90"]'); r.push(['coude, vide', await etat()]);
+await page.screenshot({ path: '/tmp/t/ar1.png' });
+await page.click('#btnAjouter'); r.push(['ajouter', await etat()]);
+// sortie libre choisie automatiquement après l'ajout ? sinon on la choisit
+await page.evaluate(() => { const C = window.__conduits; const s = C.montage.sortiesLibres()[0]; C.choisirSortie(s.id, s.port); });
+await page.click('.tuile[data-type="mamelon"]'); r.push(['mamelon → formulaire', await etat()]);
+await page.fill('#txtLongueur', '4'); await page.press('#txtLongueur', 'Enter'); r.push(['Entrée', await etat()]);
+await page.evaluate(() => { const C = window.__conduits; const s = C.montage.sortiesLibres().find(x => x.id === 2); C.choisirSortie(s.id, s.port); });
+await page.click('.tuile[data-type="te"]'); r.push(['té direct', await etat()]);
+await page.evaluate(() => { const C = window.__conduits; const s = C.montage.sortiesLibres().find(x => x.id === 3); C.choisirSortie(s.id, s.port); });
+await page.click('.tuile[data-type="reducteur"]'); r.push(['réducteur → formulaire (1/4 ou 3/8)', await etat()]);
+await page.evaluate(() => document.getElementById('dlgPiece').close());
+await page.evaluate(() => { const fams = [...document.querySelectorAll('.famille')]; fams.find(f => f.textContent.includes('Cuivre')).click(); });
+await page.click('.tuile[data-type="cu-adaptM"]'); r.push(['adaptateur mâle sur filet femelle 1/2 → formulaire (cuivre 1/2 ou 3/4)', await etat()]);
+await page.evaluate(() => document.getElementById('dlgPiece').close());
+await page.screenshot({ path: '/tmp/t/ar2.png' });
+const fam = await page.evaluate(() => [...document.querySelectorAll('.famille')].map(f => f.textContent + ':' + f.getAttribute('aria-expanded')));
+console.log(JSON.stringify(r, null, 1), fam, err.join('\n') || 'ok');
+await nav.close();

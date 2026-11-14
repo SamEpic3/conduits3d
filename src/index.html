@@ -82,7 +82,12 @@ ol.coudes{margin:2px 0 0;padding-left:20px;font:500 12.5px var(--mono)}
 .panel section h3{margin-top:6px}
 #secPiece{display:grid;gap:8px}
 .catalogue{display:grid;gap:10px}
-.catalogue .famille{font:600 12px var(--body);text-transform:uppercase;letter-spacing:.5px;color:var(--muted);margin:2px 0 -4px}
+.catalogue{gap:6px}
+.catalogue .famille{display:flex;align-items:center;gap:8px;width:100%;border:0;border-radius:8px;background:var(--bg);padding:9px 10px;font:600 12.5px var(--body);text-transform:uppercase;letter-spacing:.5px;color:var(--fg);text-align:left}
+.catalogue .famille .chevron{transition:transform .15s;color:var(--muted)}
+.catalogue .famille[aria-expanded="true"] .chevron{transform:rotate(90deg)}
+.catalogue .famille .compte{margin-left:auto;font:500 11.5px var(--mono);color:var(--muted);text-transform:none;letter-spacing:0}
+.catalogue .famille.vide-compat .compte{color:var(--muted)}
 .catalogue .tuiles{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
 .tuile{display:grid;gap:2px;justify-items:center;padding:4px 3px 6px;border:1.5px solid var(--line);border-radius:9px;background:var(--panel);white-space:normal;font:500 11.5px/1.15 var(--body);text-align:center;color:var(--fg)}
 .tuile img,.tuile .vide{width:100%;aspect-ratio:1;object-fit:contain}
@@ -91,8 +96,6 @@ ol.coudes{margin:2px 0 0;padding-left:20px;font:500 12.5px var(--mono)}
 .tuile .vide.echec{animation:none;background:var(--bg)}
 .tuile.on{border-color:var(--copper);background:var(--copper-soft)}
 .tuile.non{opacity:.32}
-.choix{display:grid;gap:8px;position:sticky;bottom:-14px;background:var(--panel);padding:8px 0 4px;border-top:1px solid var(--line)}
-.choix strong{font:600 15px var(--body)}
 #listeMateriel table{width:100%;border-collapse:collapse;font-size:13.5px}
 #listeMateriel th{text-align:left;font-weight:600;color:var(--muted);font-size:12px;border-bottom:1px solid var(--line);padding:4px 4px}
 #listeMateriel td{border-bottom:1px solid var(--line);padding:5px 4px;vertical-align:top}
@@ -104,6 +107,13 @@ ol.coudes{margin:2px 0 0;padding-left:20px;font:500 12.5px var(--mono)}
 .menu button{border:0;background:transparent;text-align:left;padding:9px 10px;border-radius:7px;display:flex;justify-content:space-between;gap:16px;font-weight:500}
 .menu button:hover:not(:disabled){background:var(--bg)}
 .menu kbd{font:500 11px var(--mono);color:var(--muted)}
+dialog#dlgPiece{border:1px solid var(--line);border-radius:14px;padding:0;background:var(--panel);color:var(--fg);width:min(420px,94vw);box-shadow:0 12px 40px rgb(0 0 0 / .3)}
+dialog#dlgPiece::backdrop{background:rgb(0 0 0 / .3)}
+.dlg-tete{display:grid;grid-template-columns:64px 1fr auto;gap:12px;align-items:center}
+.dlg-tete img{width:64px;height:64px;object-fit:contain;border-radius:8px;background:var(--bg)}
+.dlg-tete strong{font:600 16px var(--body)}
+.dlg-tete .fermer{border:0;background:transparent;font-size:18px;padding:6px 10px}
+@media (max-width:760px){dialog#dlgPiece{margin:auto auto 8px;width:calc(100vw - 16px);max-width:none}}
 dialog#dlgImage{border:1px solid var(--line);border-radius:14px;padding:0;background:var(--panel);color:var(--fg);width:min(760px,94vw);box-shadow:0 12px 40px rgb(0 0 0 / .3)}
 dialog#dlgImage::backdrop{background:rgb(0 0 0 / .35)}
 .dlg{display:grid;gap:14px;padding:18px}
@@ -127,7 +137,6 @@ label.check{display:flex;gap:8px;align-items:center;color:var(--fg);font-size:14
   .toolbar .sep{flex:none}
   #modes,#barreRot{top:calc(env(safe-area-inset-top) + 56px);right:auto}
   .catalogue .tuiles{grid-template-columns:repeat(4,1fr)}
-  .choix{position:static;border-top:0;padding:0}
   .replier{display:inline-block}
   .panel.replie .contenu{display:none}
   .panel.replie .replier{transform:rotate(180deg)}
@@ -205,7 +214,7 @@ label.check{display:flex;gap:8px;align-items:center;color:var(--fg);font-size:14
     <button role="menuitem" data-action="fiche">ⓘ Fiche de la pièce</button>
     <button role="menuitem" data-action="supprimer" class="danger">🗑 Supprimer <kbd>Suppr</kbd></button>
   </div>
-  <p id="note">Choisis une pièce, puis clique « Ajouter » pour commencer le montage.</p>
+  <p id="note">Touche une pièce dans le catalogue pour commencer le montage.</p>
 
   <aside class="panel">
     <div class="entete">
@@ -254,24 +263,8 @@ label.check{display:flex;gap:8px;align-items:center;color:var(--fg);font-size:14
           <option value="tb-comp-f">Compression × NPT femelle</option>
         </optgroup>
       </select>
+      <p class="muted" id="indiceCatalogue"></p>
       <div id="catalogue" class="catalogue"></div>
-      <div class="choix">
-        <strong id="nomChoisi"></strong>
-        <div class="row">
-          <label><span id="lblTailleTexte">Diamètre nominal</span>
-            <select id="selTaille"><option>1/2</option><option>3/4</option></select>
-          </label>
-          <label id="lblTailleB" hidden><span id="lblTailleBTexte">Filet NPT</span>
-            <select id="selTailleB"><option>1/2</option><option>3/4</option></select>
-          </label>
-          <label id="lblLongueur">Longueur (po)
-            <input type="text" id="txtLongueur" list="longueursStd" value="3" inputmode="decimal">
-            <datalist id="longueursStd"></datalist>
-          </label>
-        </div>
-        <button id="btnAjouter" class="primary">＋ Ajouter</button>
-        <p class="muted" id="indice"></p>
-      </div>
       <div class="row">
         <button id="btnImporter" title="Poser un tube cintré exporté par la cintreuse 3D (fichier .json)">⤓ Tube cintré</button>
         <button id="btnFermer" title="Relier deux sorties face à face avec le tuyau ou le tube de la bonne longueur">⟲ Fermer une boucle</button>
@@ -333,6 +326,32 @@ label.check{display:flex;gap:8px;align-items:center;color:var(--fg);font-size:14
     </div>
   </aside>
 </div>
+<dialog id="dlgPiece">
+  <form method="dialog" class="dlg">
+    <div class="dlg-tete">
+      <img id="imgChoisie" alt="">
+      <strong id="nomChoisi"></strong>
+      <button type="button" class="fermer" title="Fermer" aria-label="Fermer" onclick="this.closest('dialog').close()">✕</button>
+    </div>
+    <div class="row">
+      <label><span id="lblTailleTexte">Diamètre nominal</span>
+        <select id="selTaille"><option>1/2</option><option>3/4</option></select>
+      </label>
+      <label id="lblTailleB" hidden><span id="lblTailleBTexte">Filet NPT</span>
+        <select id="selTailleB"><option>1/2</option><option>3/4</option></select>
+      </label>
+      <label id="lblLongueur">Longueur (po)
+        <input type="text" id="txtLongueur" list="longueursStd" value="3" inputmode="decimal">
+        <datalist id="longueursStd"></datalist>
+      </label>
+    </div>
+    <p class="muted" id="indice"></p>
+    <div class="row">
+      <button type="button" onclick="this.closest('dialog').close()">Annuler</button>
+      <button id="btnAjouter" class="primary" value="ok">＋ Ajouter</button>
+    </div>
+  </form>
+</dialog>
 <dialog id="dlgImage">
   <form method="dialog" class="dlg">
     <h2>Exporter une image</h2>

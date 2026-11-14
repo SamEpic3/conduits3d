@@ -4,18 +4,28 @@ import { CATALOGUE } from 'app/catalogue.js';
 
 const VERSION = 'conduits3d-vignettes-2';
 
-export function creerCatalogue({ vue, conteneur, select, surChoix }) {
+export function creerCatalogue({ vue, conteneur, select, surChoix, surRefus = () => {} }) {
   const tuiles = new Map();       // type → bouton
   const sorties = new Map();      // type → types de sorties ('npt-f', …), connus une fois la vignette faite
   let cache = {};
   try { cache = JSON.parse(localStorage.getItem(VERSION)) || {}; } catch { cache = {}; }
 
+  const familles = [];   // { entete, grille, types }
+  let ouvertes;
+  try { const l = JSON.parse(localStorage.getItem('conduits3d-familles')); ouvertes = Array.isArray(l) ? new Set(l) : null; } catch { ouvertes = null; }
+  const garderOuvertes = () => { try { localStorage.setItem('conduits3d-familles', JSON.stringify(familles.filter(f => !f.grille.hidden).map(f => f.nom))); } catch { /* */ } };
+  const plier = (f, ouvert) => { f.grille.hidden = !ouvert; f.entete.setAttribute('aria-expanded', String(ouvert)); };
   for (const groupe of select.querySelectorAll('optgroup')) {
-    const fam = document.createElement('div');
+    const fam = document.createElement('button');
+    fam.type = 'button';
     fam.className = 'famille';
-    fam.textContent = groupe.label;
+    fam.innerHTML = `<span class="chevron">▸</span><span>${groupe.label}</span><span class="compte"></span>`;
     const grille = document.createElement('div');
     grille.className = 'tuiles';
+    const f = { nom: groupe.label, entete: fam, grille, types: [...groupe.querySelectorAll('option')].map(o => o.value) };
+    familles.push(f);
+    plier(f, ouvertes ? ouvertes.has(groupe.label) : familles.length === 1);
+    fam.onclick = () => { plier(f, grille.hidden); garderOuvertes(); };
     for (const opt of groupe.querySelectorAll('option')) {
       const b = document.createElement('button');
       b.type = 'button';
@@ -25,20 +35,23 @@ export function creerCatalogue({ vue, conteneur, select, surChoix }) {
       const c = cache[opt.value];
       b.innerHTML = (c ? `<img alt="" src="${c.img}">` : '<span class="vide"></span>') + `<span>${opt.textContent}</span>`;
       if (c) sorties.set(opt.value, c.sorties);
-      b.onclick = () => { if (!b.classList.contains('non')) choisir(opt.value); };
+      b.onclick = () => {
+        if (b.classList.contains('non')) return surRefus(opt.value);
+        choisir(opt.value, true);
+      };
       grille.append(b);
       tuiles.set(opt.value, b);
     }
     conteneur.append(fam, grille);
   }
 
-  function choisir(type, defiler = true) {
+  // clic : vrai quand l'élève a touché la tuile (ajout rapide), faux quand le choix vient du code.
+  function choisir(type, clic = false) {
     select.value = type;
     for (const [t, b] of tuiles) b.classList.toggle('on', t === type);
-    surChoix(type);
-    // Au téléphone, le choix de grosseur est sous la grille : on le montre.
-    if (defiler && matchMedia('(max-width:760px)').matches) document.querySelector('.choix')?.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+    surChoix(type, clic);
   }
+  const image = type => tuiles.get(type)?.querySelector('img')?.src || '';
 
   // Vignettes manquantes : une à la fois, entre deux images, pour ne pas figer l'app.
   const manquantes = [...tuiles.keys()].filter(t => !cache[t]);
@@ -74,8 +87,9 @@ export function creerCatalogue({ vue, conteneur, select, surChoix }) {
   if (manquantes.length) setTimeout(suivante, 1200);
 
   // Grise les pièces qui n'ont aucune sortie pouvant se brancher sur la sortie choisie.
+  // ouvrir : déplie les familles qui ont une pièce compatible et replie les autres (nouvelle sortie choisie).
   let dernierPort = null;
-  function compatibles(port) {
+  function compatibles(port, ouvrir = false) {
     dernierPort = port;
     for (const [type, b] of tuiles) {
       const s = sorties.get(type);
@@ -87,7 +101,12 @@ export function creerCatalogue({ vue, conteneur, select, surChoix }) {
       b.classList.toggle('non', !ok);
       b.title = CATALOGUE[type].nom + (ok ? '' : ' — ne se branche pas sur la sortie choisie');
     }
+    for (const f of familles) {
+      const n = f.types.filter(t => !tuiles.get(t).classList.contains('non')).length;
+      f.entete.querySelector('.compte').textContent = port ? `${n} / ${f.types.length}` : f.types.length;
+      if (ouvrir && port) plier(f, n > 0);
+    }
   }
 
-  return { choisir, compatibles };
+  return { choisir, compatibles, image };
 }

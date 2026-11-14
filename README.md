@@ -16,8 +16,10 @@ Après une mise à jour du site, changer `VERSION` dans `sw.js` pour que les app
 Sur téléphone : outils en haut (icônes), panneau en tiroir au bas en portrait (à droite en paysage), repliable avec ▾.
 
 ## Utilisation
-1. Onglet **Ajouter** : choisis une pièce dans le catalogue en images, sa grosseur, puis **Ajouter**. La première pièce se
-   place au centre. Les pièces grisées ne se branchent pas sur la sortie choisie.
+1. Onglet **Ajouter** : catalogue en images, une famille repliable par sorte de conduit. Choisis une sortie (anneau),
+   puis touche une pièce : elle s'ajoute tout de suite avec la grosseur de la sortie. Un petit formulaire s'ouvre
+   seulement s'il reste un choix à faire (première pièce, longueur d'un tuyau, réducteur ou adaptateur).
+   Les pièces grisées ne se branchent pas sur la sortie choisie ; les familles compatibles s'ouvrent d'elles-mêmes.
 2. Les **anneaux orange** sont les sorties libres ; clique-en une (elle devient bleue) pour y brancher la pièce suivante.
    Les filets mâles entrent de la longueur d'engagement (1/2 po : 0,500 ; 3/4 po : 0,5625).
 3. Clique une pièce : sa fiche s'ouvre (onglet **Pièce**). **Clic droit** ou **toucher long** sur une pièce : menu

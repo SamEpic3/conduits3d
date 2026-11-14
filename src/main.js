@@ -243,6 +243,11 @@ function majPanneau() {
       ? `Sera branchée sur la sortie en bleu (${nomPiece(montage.piece(cible.id))}).`
       : 'Clique sur une sortie (anneau orange) pour choisir où brancher la pièce.';
   $('btnAjouter').disabled = !vide && !cible;
+  $('indiceCatalogue').textContent = vide
+    ? 'Touche une pièce pour commencer : elle sera placée au centre.'
+    : cible
+      ? `Touche une pièce pour la brancher sur la sortie choisie (${decrirePort(montage.portMonde(montage.piece(cible.id), cible.port))}). Les pièces grisées ne s'y branchent pas.`
+      : 'Clique une sortie (anneau orange) dans la vue, puis touche la pièce à y brancher.';
   const tuile = document.querySelector(`.tuile[data-type="${$('selPiece').value}"]`);
   if (cible && tuile?.classList.contains('non')) {
     $('btnAjouter').disabled = true;
@@ -393,7 +398,7 @@ function ajouter() {
   vue.cadrer(montage.groupe);
   note(premier
     ? `${nomPiece(p)} placé${e_(p)}. Les anneaux orange sont les sorties libres ; la bleue est choisie pour la prochaine pièce.`
-    : `${nomPiece(p)} ajouté${e_(p)}. Au besoin, tourne la pièce autour du joint avec ↺ ↻.`);
+    : `${nomPiece(p)} ajouté${e_(p)}. Pas la bonne ? Annuler (↶). Pour l'orienter : clic droit ou toucher long, puis Rotation.`);
 }
 
 function demarrerFermeture() {
@@ -768,9 +773,9 @@ $('cv').addEventListener('pointerup', e => {
     rafraichir();
     tailleSelonCible();
     choisirOnglet('pieces');
-    if (document.querySelector('.tuile.on.non')) document.querySelector('.tuile:not(.non)')?.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+    catalogue.compatibles(montage.portMonde(montage.piece(s.id), s.port), true);
     const pm = montage.portMonde(montage.piece(s.id), s.port);
-    note(`Sortie choisie (${decrirePort(pm)}). Choisis la pièce à brancher, puis clique « Ajouter ». Les pièces grisées ne s'y branchent pas.`);
+    note(`Sortie choisie (${decrirePort(pm)}). Touche la pièce à y brancher dans le catalogue ; les pièces grisées ne s'y branchent pas.`);
     return;
   }
   const plan = vue.renderer.clippingPlanes[0];
@@ -866,9 +871,52 @@ $('cv').addEventListener('pointerup', e => {
 // ---------------------------------------------------------------------------
 // Boutons et clavier
 
+// ---------------------------------------------------------------------------
+// Ajout rapide : toucher une tuile ajoute la pièce tout de suite quand la grosseur va de soi
+// (celle de la sortie choisie). Sinon (première pièce, longueur à donner, plusieurs grosseurs
+// possibles), un petit formulaire s'ouvre.
+
+// Grosseurs encore à choisir pour cette pièce sur la sortie choisie (0 = rien à demander).
+function choixRestants(e) {
+  if (!cible) return 2;
+  const pm = montage.portMonde(montage.piece(cible.id), cible.port), fam = pm.type.split('-')[0];
+  if (!e.listeTaillesB) return 0;
+  const surA = e.famille === fam && e.listeTailles.includes(pm.taille);
+  let combos = surA ? e.listeTaillesB.map(b => `${pm.taille}|${b}`) : e.listeTailles.map(a => `${a}|${pm.taille}`);
+  if (e.combinaisons) combos = combos.filter(c => e.combinaisons.includes(c));
+  if (combos.length === 1) { const [a, b] = combos[0].split('|'); $('selTaille').value = a; $('selTailleB').value = b; }
+  return combos.length;
+}
+
+function ouvrirFormulaire() {
+  $('imgChoisie').src = catalogue.image($('selPiece').value);
+  $('imgChoisie').hidden = !$('imgChoisie').src;
+  majPanneau();
+  $('dlgPiece').showModal();
+  if (!$('lblLongueur').hidden) { $('txtLongueur').focus(); $('txtLongueur').select(); }
+  else $('btnAjouter').focus();
+}
+
+function ajoutRapide(type) {
+  const e = CATALOGUE[type];
+  const vide = !montage.pieces.length;
+  if (!vide && !cible) return note('Choisis d\'abord une sortie (anneau orange) dans la vue : la pièce s\'y branchera.', true);
+  if (vide || e.longueur || choixRestants(e) > 1) return ouvrirFormulaire();
+  ajouter();
+}
+
+$('btnAjouter').onclick = ev => {
+  ev.preventDefault();
+  const n = montage.pieces.length;
+  ajouter();
+  if (montage.pieces.length > n) $('dlgPiece').close();
+  else $('indice').textContent = $('note').textContent;
+};
+
 const catalogue = creerCatalogue({
   vue, conteneur: $('catalogue'), select: $('selPiece'),
-  surChoix: () => { majPanneau(); tailleSelonCible(); },
+  surChoix: (type, clic) => { majPanneau(); tailleSelonCible(); if (clic) ajoutRapide(type); },
+  surRefus: type => note(`${CATALOGUE[type].nom} : ne se branche pas sur la sortie choisie (${decrirePort(montage.portMonde(montage.piece(cible.id), cible.port))}).`, true),
 });
 catalogue.choisir($('selPiece').value, false);
 $('btnTranslation').onclick = () => choisirManip('translation');
@@ -884,7 +932,6 @@ $('btnPanneau').onclick = () => {
   const replie = document.querySelector('.panel').classList.toggle('replie');
   $('btnPanneau').setAttribute('aria-expanded', String(!replie));
 };
-$('btnAjouter').onclick = ajouter;
 $('btnImporter').onclick = () => $('fichierTube').click();
 $('fichierTube').onchange = e => { const f = e.target.files[0]; e.target.value = ''; if (f) importerTube(f); };
 $('btnFermer').onclick = () => fermeture ? (arreterFermeture(), note('Fermeture de boucle annulée.')) : demarrerFermeture();
@@ -995,7 +1042,7 @@ $('btnToutEffacer').onclick = () => {
 };
 
 document.addEventListener('keydown', e => {
-  if (e.target.matches('input, select') || $('dlgImage').open) return;
+  if (e.target.matches('input, select') || $('dlgImage').open || $('dlgPiece').open) return;
   if ((e.ctrlKey || e.metaKey) && (e.key.toLowerCase() === 'y' || (e.shiftKey && e.key.toLowerCase() === 'z'))) { e.preventDefault(); retablir(); return; }
   if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z') { e.preventDefault(); annuler(); return; }
   if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's') { e.preventDefault(); enregistrer(); return; }
