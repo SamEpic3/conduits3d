@@ -168,7 +168,7 @@ export class Montage {
   }
 
   // Calcule la position de chaque pièce (les parents d'abord).
-  placer({ garnitures = true } = {}) {
+  placer({ garnitures = true, ancien = false } = {}) {
     for (const p of this.ordre()) {
       const o = this.objet(p);
       if (!p.lien && p.ancrage) {
@@ -185,8 +185,18 @@ export class Montage {
         const cible = this.portMonde(parent, p.lien.port);
         const pe = this.ports(p)[p.lien.portEnfant];
         // La sortie de l'enfant pointe à l'opposé de celle du parent, puis on tourne autour de l'axe du joint.
-        const q = new THREE.Quaternion().setFromUnitVectors(pe.sortie, cible.sortie.clone().negate());
-        q.premultiply(new THREE.Quaternion().setFromAxisAngle(cible.sortie, THREE.MathUtils.degToRad(p.angle)));
+        // L'orientation se calcule dans le repère du parent : si le parent tourne, l'enfant tourne avec lui.
+        let q;
+        if (ancien) {
+          // Version 1 des fichiers : orientation calculée dans le repère du monde (pour convertir les vieux montages).
+          q = new THREE.Quaternion().setFromUnitVectors(pe.sortie, cible.sortie.clone().negate());
+          q.premultiply(new THREE.Quaternion().setFromAxisAngle(cible.sortie, THREE.MathUtils.degToRad(p.angle)));
+        } else {
+          const sLoc = this.ports(parent)[p.lien.port].sortie.clone().normalize();
+          const rel = new THREE.Quaternion().setFromUnitVectors(pe.sortie, sLoc.clone().negate());
+          rel.premultiply(new THREE.Quaternion().setFromAxisAngle(sLoc, THREE.MathUtils.degToRad(p.angle)));
+          q = new THREE.Quaternion().setFromRotationMatrix(this.objet(parent).matrix).multiply(rel);
+        }
         // Le bout mâle entre dans le raccord : les deux ports sont décalés de l'engagement.
         // L'engagement vient du raccord femelle s'il le précise (raccords de tube), sinon de la famille.
         const fem = cible.type.endsWith('-f') ? cible : pe;
@@ -641,6 +651,18 @@ export class Montage {
       });
     }
     return pts;
+  }
+
+  // Montage enregistré avec la version 1 (orientation dans le repère du monde) : on garde exactement la même
+  // forme en recalculant l'angle de chaque pièce pour le repère du parent.
+  convertirVersion1() {
+    this.placer({ garnitures: false, ancien: true });
+    const voulu = new Map(this.pieces.map(p => [p.id, this.objet(p).matrix.clone()]));
+    for (const p of this.ordre()) if (p.lien) {
+      p.angle = this.angleConservant(p, voulu.get(p.id));
+      this.placer({ garnitures: false });
+    }
+    this.placer();
   }
 
   // Pour annuler : état sérialisable.

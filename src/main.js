@@ -534,7 +534,7 @@ function enregistrer() {
   if (nom === null) return;
   nom = (nom.trim() || `montage-${date}`).replace(/[\\/:*?"<>|]/g, '-').replace(/\.json$/i, '') + '.json';
   const donnees = {
-    format: 'conduits3d-montage', version: 1, date: new Date().toISOString(),
+    format: 'conduits3d-montage', version: 2, date: new Date().toISOString(),
     pieces: montage.pieces, seq: montage.seq,
     mesures: mesures.liste.map(m => ({ mode: m.mode, ca: m.ca, cb: m.cb })),
   };
@@ -556,6 +556,7 @@ function ouvrirTexte(texte) {
   const avant = montage.etat();
   try {
     montage.restaurer(JSON.stringify({ pieces: d.pieces, seq: d.seq ?? Math.max(0, ...d.pieces.map(p => p.id)) }));
+    if ((d.version ?? 1) < 2) montage.convertirVersion1();
   } catch (err) {
     montage.restaurer(avant); historique.pop();
     return note('Impossible d\'ouvrir ce montage : ' + err.message, true);
