@@ -88,6 +88,7 @@ ol.coudes{margin:2px 0 0;padding-left:20px;font:500 12.5px var(--mono)}
 .tuile img,.tuile .vide{width:100%;aspect-ratio:1;object-fit:contain}
 .tuile .vide{display:block;border-radius:6px;background:linear-gradient(110deg,var(--bg) 40%,var(--line) 50%,var(--bg) 60%) 0 0/200% 100%;animation:miroite 1.2s linear infinite}
 @keyframes miroite{to{background-position:-200% 0}}
+.tuile .vide.echec{animation:none;background:var(--bg)}
 .tuile.on{border-color:var(--copper);background:var(--copper-soft)}
 .tuile.non{opacity:.32}
 .choix{display:grid;gap:8px;position:sticky;bottom:-14px;background:var(--panel);padding:8px 0 4px;border-top:1px solid var(--line)}

@@ -2,7 +2,7 @@
 // Les vignettes sont rendues une fois au premier lancement, puis gardées dans le navigateur.
 import { CATALOGUE } from 'app/catalogue.js';
 
-const VERSION = 'conduits3d-vignettes-1';
+const VERSION = 'conduits3d-vignettes-2';
 
 export function creerCatalogue({ vue, conteneur, select, surChoix }) {
   const tuiles = new Map();       // type → bouton
@@ -49,9 +49,11 @@ export function creerCatalogue({ vue, conteneur, select, surChoix }) {
       return;
     }
     const e = CATALOGUE[type];
-    const t = e.listeTailles[e.listeTailles.length > 1 && e.famille !== 'tube' ? e.listeTailles.length - 1 : 0];
+    let t = e.listeTailles[e.listeTailles.length > 1 && e.famille !== 'tube' ? e.listeTailles.length - 1 : 0];
     let tb = e.listeTaillesB?.[0];
-    if (e.combinaisons && !e.combinaisons.includes(`${t}|${tb}`)) tb = e.combinaisons.find(c => c.startsWith(t + '|'))?.split('|')[1] ?? tb;
+    // Certaines pièces n'existent qu'en quelques combinaisons de grosseurs : on en prend une qui existe.
+    if (e.combinaisons && !e.combinaisons.includes(`${t}|${tb}`))
+      [t, tb] = (e.combinaisons.find(c => c.startsWith(t + '|')) ?? e.combinaisons[0]).split('|');
     try {
       const o = e.construire(t, e.longueur ? 2.5 : undefined, tb, {});
       const types = [...new Set((o.userData.ports || []).map(p => p.type))];
@@ -62,7 +64,11 @@ export function creerCatalogue({ vue, conteneur, select, surChoix }) {
       const b = tuiles.get(type);
       b.querySelector('.vide')?.replaceWith(Object.assign(document.createElement('img'), { alt: '', src: img }));
       if (dernierPort) compatibles(dernierPort);
-    } catch (err) { console.warn('vignette', type, err); }
+    } catch (err) {
+      // Pas de vignette : on n'affiche pas un chargement sans fin.
+      console.warn('vignette', type, err);
+      tuiles.get(type).querySelector('.vide')?.classList.add('echec');
+    }
     setTimeout(suivante, 30);
   };
   if (manquantes.length) setTimeout(suivante, 1200);
