@@ -52,6 +52,9 @@ function fraction(v) {
   return e ? `${e} ${n}/${d}` : `${n}/${d}`;
 }
 
+// 5.24 → « 5,24 » (au plus 3 décimales)
+const po3 = v => (+v.toFixed(3)).toString().replace('.', ',');
+
 // « 3 », « 3,5 », « 3.5 », « 3 1/2 », « 1/2 » → nombre (ou NaN)
 function lireLongueur(txt) {
   const t = txt.trim().replace(',', '.').replace(/["po]+$/i, '').trim();
@@ -210,6 +213,12 @@ function majPanneau() {
     const autres = montage.ports(p).length - 1 - [...montage.occupees(p)].filter(i => i !== p.lien?.portEnfant).length;
     $('btnSortie').disabled = !p.lien || autres < 1;
     $('btnDetacher').disabled = montage.composante(p.id).size < 2;
+    $('rangLongueur').hidden = !e.longueur;
+    if (e.longueur && $('rangLongueur').dataset.id !== String(p.id) + ':' + p.longueur) {
+      $('rangLongueur').dataset.id = String(p.id) + ':' + p.longueur;
+      $('txtNouvLongueur').value = po3(p.longueur);
+      $('longueursPiece').innerHTML = e.longueur.suggestions(p.taille).map(l => `<option value="${fraction(l)}">`).join('');
+    }
   }
 
   // Liste des mesures
@@ -357,6 +366,24 @@ function supprimer() {
   apresModification();
   rafraichir();
   note(`${nomPiece(p)} supprimé${e_(p)}.${detachees ? ' Ce qui était branché dessus reste en place ; pour le rebrancher, utilise « Fermer une boucle ».' : ''}`);
+}
+
+function changerLongueur() {
+  const p = selection && montage.piece(selection);
+  if (!p) return;
+  const L = lireLongueur($('txtNouvLongueur').value);
+  if (!(L > 0)) return note('Longueur illisible : écris par exemple 6, 6,5 ou 6 1/2.', true);
+  const avant = p.longueur;
+  memoriser();
+  const r = montage.changerLongueur(p.id, L);
+  if (r.erreur) { historique.pop(); $('txtNouvLongueur').value = po3(avant); return note(r.erreur, true); }
+  if (!r.u) { historique.pop(); return; }
+  rafraichir();
+  const dl = L - avant, txt = `${dl > 0 ? 'rallongé' : 'raccourci'} de ${po3(Math.abs(dl))} po (${po3(avant)} → ${po3(L)} po)`;
+  let msg = `${CATALOGUE[p.type].nom} ${txt}. `
+    + (r.deplacees ? `${r.deplacees} pièce${r.deplacees > 1 ? 's ont' : ' a'} glissé dans l'axe du tuyau ; rien n'est débranché.` : 'Rien d\'autre n\'a eu à bouger.');
+  if (r.ajuste) msg += ` Pour garder la boucle, l'autre ${CATALOGUE[montage.piece(r.ajuste.id).type].nom.toLowerCase()} parallèle passe de ${po3(r.ajuste.avant)} à ${po3(r.ajuste.apres)} po.`;
+  note(msg);
 }
 
 function detacher() {
@@ -568,6 +595,8 @@ document.querySelectorAll('[data-tourner]').forEach(b => b.onclick = () => tourn
 $('btnSortie').onclick = changerSortie;
 $('btnSupprimer').onclick = supprimer;
 $('btnDetacher').onclick = detacher;
+$('btnLongueur').onclick = changerLongueur;
+$('txtNouvLongueur').onkeydown = e => { if (e.key === 'Enter') changerLongueur(); };
 $('btnEnregistrer').onclick = enregistrer;
 $('btnOuvrir').onclick = () => $('fichierMontage').click();
 $('fichierMontage').onchange = async e => { const f = e.target.files[0]; e.target.value = ''; if (f) ouvrirTexte(await f.text()); };
@@ -684,4 +713,4 @@ document.addEventListener('keydown', e => {
 
 rafraichir();
 $('chargement').hidden = true;
-window.__conduits = { fleches, ouvrirTexte, importerTexte: t => importerTube({ text: async () => t }), vue, montage, mesures, THREE, ajouter, choisirOutil, tourner, $, detacher, deplacer: (id, axe, d) => { selection = id; rafraichir(); const etat = montage.debutDeplacement(id); memoriser(); glisse = { axe, etat, d, candidat: null }; montage.deplacer(etat, AXES[axe].dir.clone().multiplyScalar(d)); glisse.candidat = montage.candidatAccrochage(etat.ids); finGlisse(); }, selectionner: id => { selection = id; rafraichir(); }, choisirSortie: (id, port) => { cible = { id, port }; rafraichir(); }, fermer: (a, b) => { demarrerFermeture(); clicFermeture(a); clicFermeture(b); } };
+window.__conduits = { fleches, changerLongueur, ouvrirTexte, importerTexte: t => importerTube({ text: async () => t }), vue, montage, mesures, THREE, ajouter, choisirOutil, tourner, $, detacher, deplacer: (id, axe, d) => { selection = id; rafraichir(); const etat = montage.debutDeplacement(id); memoriser(); glisse = { axe, etat, d, candidat: null }; montage.deplacer(etat, AXES[axe].dir.clone().multiplyScalar(d)); glisse.candidat = montage.candidatAccrochage(etat.ids); finGlisse(); }, selectionner: id => { selection = id; rafraichir(); }, choisirSortie: (id, port) => { cible = { id, port }; rafraichir(); }, fermer: (a, b) => { demarrerFermeture(); clicFermeture(a); clicFermeture(b); } };

@@ -224,6 +224,14 @@ label.check{display:flex;gap:8px;align-items:center;color:var(--fg);font-size:14
     <section id="secPiece" hidden>
       <h3>Pièce choisie</h3>
       <div id="fiche"></div>
+      <div id="rangLongueur" hidden>
+        <label for="txtNouvLongueur">Changer la longueur (po)</label>
+        <div class="row">
+          <input type="text" id="txtNouvLongueur" inputmode="decimal" list="longueursPiece" autocomplete="off">
+          <datalist id="longueursPiece"></datalist>
+          <button id="btnLongueur" title="Les raccords glissent dans l'axe : rien ne se débranche">Appliquer</button>
+        </div>
+      </div>
       <div class="row">
         <button data-tourner="-90" title="Tourner autour du joint">↺ 90°</button>
         <button data-tourner="-45">↺ 45°</button>

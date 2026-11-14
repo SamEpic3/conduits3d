@@ -360,6 +360,125 @@ export class Montage {
   }
 
   // ---------------------------------------------------------------------------
+  // Changer la longueur d'un tuyau ou d'un tube droit sans rien débrancher
+
+  static estDroit(p) { return !!CATALOGUE[p.type].longueur; }
+
+  refaireObjet(p) {
+    const o = this.objets.get(p.id);
+    if (!o) return;
+    this.groupe.remove(o); o.traverse(x => x.geometry?.dispose()); this.objets.delete(p.id);
+  }
+
+  // Groupes de pièces qui restent ensemble quand on « coupe » les tuyaux donnés (chaque bout du tuyau
+  // reste avec ce qui y est branché). Renvoie une fonction groupe(id, port?) → nom du groupe.
+  groupes(coupes) {
+    const parent = new Map();
+    const nom = (id, port) => coupes.has(id) ? `${id}.${port}` : `${id}`;
+    const trouver = x => { while (parent.get(x) !== x) { parent.set(x, parent.get(parent.get(x))); x = parent.get(x); } return x; };
+    const unir = (a, b) => parent.set(trouver(a), trouver(b));
+    for (const p of this.pieces) {
+      if (coupes.has(p.id)) for (let i = 0; i < this.ports(p).length; i++) parent.set(nom(p.id, i), nom(p.id, i));
+      else parent.set(nom(p.id), nom(p.id));
+    }
+    for (const p of this.pieces) {
+      if (p.lien) unir(nom(p.id, p.lien.portEnfant), nom(p.lien.parent, p.lien.port));
+      if (p.fermeture) unir(nom(p.id, p.fermeture.portEnfant), nom(p.fermeture.id, p.fermeture.port));
+    }
+    return (id, port) => trouver(nom(id, port));
+  }
+
+  // Change la longueur du tuyau « id ». Le côté qui compte le moins de pièces glisse dans l'axe du tuyau.
+  // Dans une boucle, un autre tuyau droit de la boucle, parallèle, absorbe la différence (il raccourcit ou
+  // s'allonge d'autant) ; sinon, on refuse. Renvoie {erreur} ou {deplacees, ajuste:{id, avant, apres}|null}.
+  changerLongueur(id, L) {
+    const P = this.piece(id);
+    if (!P || !Montage.estDroit(P)) return { erreur: 'Seuls les tuyaux et les tubes droits ont une longueur à changer.' };
+    const min = CATALOGUE[P.type].longueur.min(P.taille);
+    if (L < min - 1e-6) return { erreur: `C'est plus court que le minimum (${min} po).` };
+    const delta = L - P.longueur;
+    if (Math.abs(delta) < 1e-6) return { deplacees: 0, ajuste: null };
+    const bout = (p, i) => this.portMonde(p, i).position;
+    const axe = p => bout(p, 1).sub(bout(p, 0)).normalize();
+    const uP = axe(P);
+
+    // Options : quel côté du tuyau glisse (le côté de son bout 1 ou de son bout 0), et avec quel tuyau compensateur.
+    const options = [];
+    const essayer = (Q) => {
+      const coupes = new Set(Q ? [P.id, Q.id] : [P.id]);
+      const g = this.groupes(coupes);
+      const g0 = g(P.id, 0), g1 = g(P.id, 1);
+      if (g0 === g1) return;
+      for (const [gm, gf, u] of [[g1, g0, uP], [g0, g1, uP.clone().negate()]]) {
+        let ajuste = null;
+        if (Q) {
+          const q0 = g(Q.id, 0), q1 = g(Q.id, 1);
+          if (!((q0 === gm && q1 === gf) || (q1 === gm && q0 === gf))) return;
+          const kM = q1 === gm ? 1 : 0;
+          const uQ = bout(Q, kM).sub(bout(Q, 1 - kM)).normalize();
+          const nouv = Q.longueur + delta * u.dot(uQ);
+          if (nouv < CATALOGUE[Q.type].longueur.min(Q.taille) - 1e-6) { options.push({ trop: { Q, nouv } }); continue; }
+          ajuste = { Q, avant: Q.longueur, apres: nouv, finQ: 1 - kM };
+        }
+        // Toutes les autres pièces doivent être d'un côté ou de l'autre.
+        const bouge = [], reste = [];
+        for (const p of this.pieces) {
+          if (coupes.has(p.id)) continue;
+          const x = g(p.id);
+          if (x === gm) bouge.push(p.id); else if (x === gf) reste.push(p.id); else return;
+        }
+        options.push({ bouge: new Set(bouge), u, ajuste, finP: gf === g0 ? 0 : 1, gm, g });
+      }
+    };
+    essayer(null);
+    if (!options.some(o => o.bouge)) {
+      for (const Q of this.pieces)
+        if (Q !== P && Montage.estDroit(Q) && Math.abs(Math.abs(axe(Q).dot(uP)) - 1) < 1e-6) essayer(Q);
+    }
+    const valides = options.filter(o => o.bouge);
+    if (!valides.length) {
+      const trop = options.find(o => o.trop);
+      const nomQ = trop && (CATALOGUE[trop.trop.Q.type].nom.toLowerCase());
+      return { erreur: trop
+        ? `Ce ${P.type === 'mamelon' ? 'tuyau' : 'tube'} fait partie d'une boucle fermée : pour garder la boucle, le ${nomQ} parallèle devrait passer à ${trop.trop.nouv.toFixed(3).replace('.', ',')} po, plus court que son minimum.`
+        : `Ce ${P.type === 'mamelon' ? 'tuyau' : 'tube'} fait partie d'une boucle fermée, et aucun autre tuyau droit de la boucle n'est parallèle pour compenser : le changer débrancherait la boucle.` };
+    }
+    // Celle qui bouge le moins de pièces ; à égalité, sans tuyau compensateur, puis le côté du bout 1.
+    valides.sort((a, b) => a.bouge.size - b.bouge.size || (!!a.ajuste - !!b.ajuste));
+    const o = valides[0];
+
+    const avant = this.etat();
+    const anciennes = new Map(this.pieces.map(p => [p.id, this.objet(p).matrix.clone()]));
+    const fixe = new Map([[P.id, o.finP]]);          // bout de chaque tuyau coupé qui ne bouge pas
+    if (o.ajuste) fixe.set(o.ajuste.Q.id, o.ajuste.finQ);
+    const posFixe = new Map([...fixe].map(([pid, k]) => [pid, bout(this.piece(pid), k)]));
+    const d = o.u.clone().multiplyScalar(delta);
+    P.longueur = L; this.refaireObjet(P);
+    if (o.ajuste) { o.ajuste.Q.longueur = o.ajuste.apres; this.refaireObjet(o.ajuste.Q); }
+    // Les pièces de base (sans lien) prennent leur nouvelle position ; le reste suit par les joints.
+    for (const r of this.pieces.filter(p => !p.lien)) {
+      const m = anciennes.get(r.id).clone();
+      if (fixe.has(r.id)) {
+        const k = fixe.get(r.id), local = this.ports(r)[k].position.clone();
+        m.premultiply(new THREE.Matrix4().makeTranslation(posFixe.get(r.id).clone().sub(local.applyMatrix4(m))));
+      } else if (o.bouge.has(r.id)) m.premultiply(new THREE.Matrix4().makeTranslation(d.x, d.y, d.z));
+      r.ancrage = m.toArray(); r.angle = 0;
+    }
+    this.placer();
+    // Vérification : chaque pièce est là où elle doit être, et aucune boucle ne s'ouvre.
+    let ok = true;
+    for (const p of this.pieces) {
+      if (fixe.has(p.id)) { ok &&= bout(p, fixe.get(p.id)).distanceTo(posFixe.get(p.id)) < 1e-4; continue; }
+      const voulu = new THREE.Vector3().setFromMatrixPosition(anciennes.get(p.id));
+      if (o.bouge.has(p.id)) voulu.add(d);
+      ok &&= new THREE.Vector3().setFromMatrixPosition(this.objet(p).matrix).distanceTo(voulu) < 1e-4;
+    }
+    if (ok && this.verifierFermetures().length) ok = false;
+    if (!ok) { this.restaurer(avant); return { erreur: 'Impossible de changer la longueur sans débrancher une autre pièce.' }; }
+    return { deplacees: o.bouge.size, u: o.u, ajuste: o.ajuste && { id: o.ajuste.Q.id, avant: o.ajuste.avant, apres: o.ajuste.apres } };
+  }
+
+  // ---------------------------------------------------------------------------
   // Boucles fermées
 
   // Ce qu'il faut pour relier deux sorties face à face : renvoie {type, taille, longueur} ou {erreur}.
