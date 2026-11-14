@@ -235,6 +235,13 @@ function majPanneau() {
   if (entree.deuxiemeTaille) $('lblTailleBTexte').textContent = entree.deuxiemeTaille;
   if (entree.longueur) $('longueursStd').innerHTML = entree.longueur.suggestions($('selTaille').value)
     .map(l => `<option value="${fraction(l)}">`).join('');
+  // Longueurs courantes en boutons : pas besoin du clavier au téléphone.
+  $('pucesLongueur').hidden = !entree.longueur;
+  if (entree.longueur) {
+    const actuelle = lireLongueur($('txtLongueur').value);
+    $('pucesLongueur').innerHTML = entree.longueur.suggestions($('selTaille').value)
+      .map(l => `<button type="button" data-l="${l}" class="${Math.abs(l - actuelle) < 1e-6 ? 'on' : ''}">${fraction(l)}</button>`).join('');
+  }
 
   const vide = !montage.pieces.length;
   $('indice').textContent = vide
@@ -893,8 +900,11 @@ function ouvrirFormulaire() {
   $('imgChoisie').hidden = !$('imgChoisie').src;
   majPanneau();
   $('dlgPiece').showModal();
-  if (!$('lblLongueur').hidden) { $('txtLongueur').focus(); $('txtLongueur').select(); }
-  else $('btnAjouter').focus();
+  // Au toucher, on ne met pas le curseur dans un champ : le clavier cacherait le formulaire.
+  if (matchMedia('(pointer: fine)').matches) {
+    if (!$('lblLongueur').hidden) { $('txtLongueur').focus(); $('txtLongueur').select(); }
+    else $('btnAjouter').focus();
+  } else document.activeElement?.blur();
 }
 
 function ajoutRapide(type) {
@@ -905,6 +915,16 @@ function ajoutRapide(type) {
   ajouter();
 }
 
+$('pucesLongueur').onclick = ev => {
+  const b = ev.target.closest('[data-l]');
+  if (!b) return;
+  $('txtLongueur').value = fraction(Number(b.dataset.l));
+  for (const x of $('pucesLongueur').children) x.classList.toggle('on', x === b);
+};
+$('txtLongueur').addEventListener('input', () => {
+  const v = lireLongueur($('txtLongueur').value);
+  for (const x of $('pucesLongueur').children) x.classList.toggle('on', Math.abs(Number(x.dataset.l) - v) < 1e-6);
+});
 $('btnAjouter').onclick = ev => {
   ev.preventDefault();
   const n = montage.pieces.length;

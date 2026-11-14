@@ -113,7 +113,12 @@ dialog#dlgPiece::backdrop{background:rgb(0 0 0 / .3)}
 .dlg-tete img{width:64px;height:64px;object-fit:contain;border-radius:8px;background:var(--bg)}
 .dlg-tete strong{font:600 16px var(--body)}
 .dlg-tete .fermer{border:0;background:transparent;font-size:18px;padding:6px 10px}
-@media (max-width:760px){dialog#dlgPiece{margin:auto auto 8px;width:calc(100vw - 16px);max-width:none}}
+/* Téléphone : en haut de l'écran, pour que le clavier ne le cache pas. */
+@media (max-width:760px){dialog#dlgPiece{margin:calc(env(safe-area-inset-top) + 10px) auto auto;width:calc(100vw - 16px);max-width:none}}
+.puces{display:flex;flex-wrap:wrap;gap:6px}
+.puces[hidden]{display:none}
+.puces button{padding:7px 12px;border-radius:999px;font:500 13.5px var(--mono)}
+.puces button.on{background:var(--copper-soft);border-color:var(--copper);color:var(--copper-strong)}
 dialog#dlgImage{border:1px solid var(--line);border-radius:14px;padding:0;background:var(--panel);color:var(--fg);width:min(760px,94vw);box-shadow:0 12px 40px rgb(0 0 0 / .3)}
 dialog#dlgImage::backdrop{background:rgb(0 0 0 / .35)}
 .dlg{display:grid;gap:14px;padding:18px}
@@ -345,6 +350,7 @@ label.check{display:flex;gap:8px;align-items:center;color:var(--fg);font-size:14
         <datalist id="longueursStd"></datalist>
       </label>
     </div>
+    <div class="puces" id="pucesLongueur" aria-label="Longueurs courantes"></div>
     <p class="muted" id="indice"></p>
     <div class="row">
       <button type="button" onclick="this.closest('dialog').close()">Annuler</button>
