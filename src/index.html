@@ -3,7 +3,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="theme-color" content="#1f2327">
+<meta name="theme-color" content="#e6e9ec" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#c9ced3" media="(prefers-color-scheme: dark)">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Conduits 3D">
@@ -27,8 +28,9 @@
 *{box-sizing:border-box}
 [hidden]{display:none!important}
 html,body{height:100%;margin:0}
-body{background:var(--bg);color:var(--fg);font-family:var(--body);font-size:15px;line-height:1.45;overflow:hidden;padding:16px}
-.stage{background:var(--stage);border-radius:12px;overflow:hidden;position:relative;height:100%}
+body{background:var(--stage);color:var(--fg);font-family:var(--body);font-size:15px;line-height:1.45;overflow:hidden;padding:0}
+/* La vue 3D occupe toute la page, sans cadre autour. */
+.stage{background:var(--stage);overflow:hidden;position:relative;height:100vh;height:100dvh}
 #cv{display:block;width:100%;height:100%;touch-action:none}
 .stage.outil-mesure #cv{cursor:crosshair}
 #etiquettes{position:absolute;inset:0;pointer-events:none;z-index:2}
@@ -83,8 +85,6 @@ label.check{display:flex;gap:8px;align-items:center;color:var(--fg);font-size:14
 #chargement{position:absolute;inset:0;display:grid;place-items:center;color:var(--muted)}
 /* --- Téléphone : plein écran ; outils en haut --- */
 @media (max-width:760px) and (orientation:portrait), (max-height:520px) and (orientation:landscape){
-  body{padding:0}
-  .stage{border-radius:0;height:100dvh}
   .toolbar{top:calc(env(safe-area-inset-top) + 6px);left:calc(env(safe-area-inset-left) + 6px);right:6px;max-width:none;flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none;gap:2px}
   .toolbar::-webkit-scrollbar{display:none}
   .toolbar .txt{display:none}
@@ -117,14 +117,9 @@ label.check{display:flex;gap:8px;align-items:center;color:var(--fg);font-size:14
    l'en empêche. Seulement en mode app installée ; le contenu est décalé d'autant. */
 #bandeIos{display:none}
 @media (display-mode: standalone){
-  #bandeIos{display:block;position:fixed;top:0;left:0;right:0;height:11px;background:var(--bg);z-index:1000;pointer-events:none}
-  body{padding-top:27px}
-}
-@media (display-mode: standalone) and (max-width:760px) and (orientation:portrait),
-       (display-mode: standalone) and (max-height:520px) and (orientation:landscape){
-  #bandeIos{background:var(--stage)}
+  #bandeIos{display:block;position:fixed;top:0;left:0;right:0;height:11px;background:var(--stage);z-index:1000;pointer-events:none}
   body{padding-top:11px}
-  .stage{height:100%}
+  .stage{height:calc(100dvh - 11px)}
 }
 </style>
 <!--IMPORTMAP-->
