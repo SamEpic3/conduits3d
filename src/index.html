@@ -29,6 +29,10 @@
 [hidden]{display:none!important}
 html,body{height:100%;margin:0}
 body{background:var(--stage);color:var(--fg);font-family:var(--body);font-size:15px;line-height:1.45;overflow:hidden;padding:0}
+/* Toucher long : pas de sélection de texte, de loupe ni de menu « Copier » d'iOS (sauf dans les champs). */
+body{-webkit-user-select:none;user-select:none;-webkit-touch-callout:none;-webkit-tap-highlight-color:transparent}
+input,textarea{-webkit-user-select:text;user-select:text;-webkit-touch-callout:default}
+#cv{touch-action:none}
 /* La vue 3D occupe toute la page, sans cadre autour. */
 .stage{background:var(--stage);overflow:hidden;position:relative;height:100vh;height:100dvh}
 #cv{display:block;width:100%;height:100%;touch-action:none}

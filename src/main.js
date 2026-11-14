@@ -852,6 +852,8 @@ document.addEventListener('pointerdown', e => { if (!$('menuPiece').hidden && !e
 
 let droit = null, toucherLong = null;
 $('cv').addEventListener('contextmenu', e => e.preventDefault());
+// Sur la vue 3D, ni sélection ni glisser-déposer d'image (toucher long au téléphone).
+for (const ev of ['selectstart', 'dragstart']) $('stage').addEventListener(ev, e => { if (!e.target.closest('input, textarea')) e.preventDefault(); });
 $('cv').addEventListener('pointerdown', e => {
   if (e.button === 2) droit = { x: e.clientX, y: e.clientY };
   if (e.pointerType === 'touch' && !glisse && !tourne) {
