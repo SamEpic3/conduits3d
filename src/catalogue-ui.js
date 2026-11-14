@@ -68,7 +68,8 @@ export function creerCatalogue({ vue, conteneur, select, surChoix, surRefus = ()
     if (e.combinaisons && !e.combinaisons.includes(`${t}|${tb}`))
       [t, tb] = (e.combinaisons.find(c => c.startsWith(t + '|')) ?? e.combinaisons[0]).split('|');
     try {
-      const o = e.construire(t, e.longueur ? 2.5 : undefined, tb, {});
+      const demo = type === 'tb-cintre' ? { cintrage: { longueur: 7, rayon: 15 / 16, coudes: [{ s0: 2.5, a: 90, th: 0 }] } } : {};
+      const o = e.construire(t, e.longueur ? 2.5 : undefined, tb, demo);
       const types = [...new Set((o.userData.ports || []).map(p => p.type))];
       const img = vue.vignette(o).toDataURL('image/webp', 0.85);
       o.traverse(x => x.geometry?.dispose());

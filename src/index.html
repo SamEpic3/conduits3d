@@ -122,6 +122,14 @@ button{display:inline-flex;align-items:center;justify-content:center;gap:6px}
 .replier svg.ic{width:20px;height:20px}
 .row button[data-tourner]{padding-left:4px;padding-right:4px;gap:3px}
 .menu-barre{position:absolute;z-index:21}
+.modes-app{display:flex;gap:2px;background:var(--bg);border-radius:8px;padding:2px}
+.modes-app button{padding:6px 11px;border-radius:6px;font:600 13.5px var(--body);color:var(--muted)}
+.toolbar .modes-app button.on{background:var(--panel);color:var(--fg);box-shadow:0 1px 3px rgb(0 0 0 / .14)}
+#cadreCintreuse{position:absolute;inset:0;width:100%;height:100%;border:0;z-index:3;background:var(--stage)}
+/* Mode Cintrage : la cintreuse occupe la vue ; seule la barre des modes reste de Conduits 3D. */
+body.mode-cintrage .toolbar[role=toolbar] > :not(.modes-app),body.mode-cintrage .panel,body.mode-cintrage #note,
+body.mode-cintrage #etiquettes,body.mode-cintrage #barreRot,body.mode-cintrage #modes,body.mode-cintrage .menu{display:none!important}
+body.mode-cintrage .toolbar[role=toolbar]{z-index:6;right:auto}
 .toolbar button.ouvert{background:var(--bg)}
 @media (pointer:coarse){.menu kbd{display:none}}
 .coche-ic{visibility:hidden;margin-left:-4px}
@@ -241,7 +249,13 @@ label.check{display:flex;gap:8px;align-items:center;color:var(--fg);font-size:14
   <div id="etiquettes"></div>
   <p id="chargement">Chargement de la 3D…</p>
 
+  <iframe id="cadreCintreuse" title="Cintreuse à tubes 3D" hidden></iframe>
   <div class="toolbar" role="toolbar" aria-label="Outils">
+    <div class="modes-app" role="tablist" aria-label="Mode">
+      <button role="tab" data-mode-app="montage" class="on" aria-selected="true" title="Monter tuyaux, tubes et raccords">Montage</button>
+      <button role="tab" data-mode-app="cintrage" aria-selected="false" title="Cintrer un tube à la cintreuse">Cintrage</button>
+    </div>
+    <span class="sep sep-mode"></span>
     <button data-menu="menuFichier" aria-haspopup="menu" title="Fichier : nouveau, ouvrir, enregistrer, importer, exporter"><svg class="ic" aria-hidden="true"><use href="#i-menu"/></svg><span class="txt"> Fichier</span></button>
     <span class="sep"></span>
     <button data-outil="main" class="on" title="Sélection (S) : choisis une sortie ou une pièce"><svg class="ic" aria-hidden="true"><use href="#i-pointeur"/></svg><span class="txt"> Sélection</span></button>
@@ -291,6 +305,7 @@ label.check{display:flex;gap:8px;align-items:center;color:var(--fg);font-size:14
     <div class="menu-titre" id="menuTitre"></div>
     <button role="menuitem" data-action="translation"><svg class="ic" aria-hidden="true"><use href="#i-deplacer"/></svg><span>Translation</span> <kbd>G</kbd></button>
     <button role="menuitem" data-action="rotation"><svg class="ic" aria-hidden="true"><use href="#i-rotation"/></svg><span>Rotation</span> <kbd>R</kbd></button>
+    <button role="menuitem" data-action="cintrage"><svg class="ic" aria-hidden="true"><use href="#i-tube"/></svg><span>Modifier le cintrage</span></button>
     <button role="menuitem" data-action="longueur"><svg class="ic" aria-hidden="true"><use href="#i-longueur"/></svg><span>Changer la longueur</span></button>
     <button role="menuitem" data-action="sortie"><svg class="ic" aria-hidden="true"><use href="#i-echanger"/></svg><span>Changer de sortie</span></button>
     <button role="menuitem" data-action="detacher"><svg class="ic" aria-hidden="true"><use href="#i-ciseaux"/></svg><span>Détacher</span></button>
@@ -338,6 +353,7 @@ label.check{display:flex;gap:8px;align-items:center;color:var(--fg);font-size:14
         </optgroup>
         <optgroup label="Raccords de tube">
           <option value="tb-tube">Tube recuit</option>
+          <option value="tb-cintre">Tube cintré (cintreuse)</option>
           <option value="tb-sae-m">SAE 45° × NPT mâle</option>
           <option value="tb-sae-f">SAE 45° × NPT femelle</option>
           <option value="tb-if-m">Inverted flare × NPT mâle</option>

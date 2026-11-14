@@ -777,6 +777,11 @@ $('cv').addEventListener('pointerup', e => {
     const s = ancetre(surAnneau.object, 'sortie').userData.sortie;
     if (fermeture) return clicFermeture(s);
     cible = s; selection = s.id;
+    if (tubeEnAttente) {
+      if (!montage.portMonde(montage.piece(s.id), s.port).type.startsWith('tube'))
+        return note('Le tube cintré se pose sur une sortie de raccord de tube (SAE, inverted flare ou compression).', true);
+      return poserTube(tubeEnAttente);
+    }
     rafraichir();
     tailleSelonCible();
     choisirOnglet('pieces');
@@ -821,6 +826,7 @@ function ouvrirMenu(x, y) {
   $('menuTitre').textContent = nomPiece(p);
   const menu = $('menuPiece');
   menu.querySelector('[data-action="longueur"]').hidden = !e.longueur;
+  menu.querySelector('[data-action="cintrage"]').hidden = !p.cintrage;
   const autres = montage.ports(p).length - 1 - [...montage.occupees(p)].filter(i => i !== p.lien?.portEnfant).length;
   menu.querySelector('[data-action="sortie"]').disabled = !p.lien || autres < 1;
   menu.querySelector('[data-action="detacher"]').disabled = montage.composante(p.id).size < 2;
@@ -841,6 +847,7 @@ $('menuPiece').addEventListener('click', e => {
   ({
     translation: () => choisirManip('translation'),
     rotation: () => choisirManip('rotation'),
+    cintrage: () => modifierCintrage(selection),
     longueur: () => { choisirOnglet('piece'); $('txtNouvLongueur').focus(); $('txtNouvLongueur').select(); },
     sortie: changerSortie,
     detacher,
@@ -878,6 +885,97 @@ $('cv').addEventListener('pointerup', e => {
 });
 
 // ---------------------------------------------------------------------------
+// Deux modes : Montage et Cintrage. La cintreuse 3D (page à part) s'affiche dans un cadre et
+// renvoie le tube cintré directement au montage (messages entre les deux pages, sans fichier).
+
+let modeApp = 'montage';
+let tubeEnAttente = null;    // tube venu de la cintreuse, en attente d'une sortie où le poser
+let editionCintrage = null;  // id du tube cintré du montage qu'on est en train de modifier
+let cintreusePrete = false, aEnvoyer = [];
+const cadre = $('cadreCintreuse');
+function versCintreuse(msg) {
+  if (cintreusePrete) cadre.contentWindow.postMessage(msg, '*');
+  else aEnvoyer.push(msg);
+}
+
+function choisirModeApp(m) {
+  if (m === modeApp) return;
+  modeApp = m;
+  document.body.classList.toggle('mode-cintrage', m === 'cintrage');
+  document.querySelectorAll('[data-mode-app]').forEach(b => { b.classList.toggle('on', b.dataset.modeApp === m); b.setAttribute('aria-selected', String(b.dataset.modeApp === m)); });
+  fermerMenu(); fermerMenusBarre();
+  if (m === 'cintrage') {
+    if (!cadre.src) cadre.src = 'cintreuse.html?integre=1';
+    cadre.hidden = false;
+    cadre.focus();
+  } else {
+    cadre.hidden = true;
+    vue.demander();
+  }
+}
+document.querySelectorAll('[data-mode-app]').forEach(b => b.onclick = () => {
+  if (b.dataset.modeApp === 'montage' && modeApp === 'cintrage') editionCintrage = null;
+  choisirModeApp(b.dataset.modeApp);
+});
+
+// Ouvrir la cintreuse pour un nouveau tube (depuis le catalogue) ou pour modifier un tube du montage.
+function cintrerNouveau() {
+  editionCintrage = null;
+  choisirModeApp('cintrage');
+  const pm = cible && montage.portMonde(montage.piece(cible.id), cible.port);
+  versCintreuse({ type: 'conduits3d:longueur', longueur: '12',
+    message: pm ? `Cintre le tube qui ira sur : ${nomPiece(montage.piece(cible.id))}. Choisis sa longueur, insère-le, puis « Poser dans le montage ».` : undefined });
+}
+function modifierCintrage(id) {
+  const p = montage.piece(id);
+  if (!p?.cintrage) return;
+  editionCintrage = id;
+  choisirModeApp('cintrage');
+  versCintreuse({ type: 'conduits3d:charger', tube: p.cintrage });
+}
+
+addEventListener('message', e => {
+  if (e.source !== cadre.contentWindow || !e.data) return;
+  if (e.data.type === 'conduits3d:pret') { cintreusePrete = true; aEnvoyer.splice(0).forEach(versCintreuse); }
+  if (e.data.type === 'conduits3d:tube') recevoirTube(e.data.tube);
+});
+
+function recevoirTube(tube) {
+  const d = lireTubeCintre(JSON.stringify(tube));
+  if (d.erreur) return note(d.erreur, true);
+  choisirModeApp('montage');
+  if (editionCintrage && montage.piece(editionCintrage)) {
+    // Remplace le cintrage du tube en gardant ses joints ; une boucle qui ne ferme plus s'ouvre (et on le dit).
+    memoriser();
+    const id = editionCintrage;
+    editionCintrage = null;
+    const p = montage.piece(id);
+    p.cintrage = d; p.longueur = d.longueur;
+    montage.refaireObjet(p);
+    montage.placer();
+    const ouv = apresModification();
+    selection = id;
+    rafraichir();
+    if (!ouv) note(`Cintrage du tube modifié : ${d.coudes.length} coude${d.coudes.length > 1 ? 's' : ''}, longueur développée ${fmtPo(d.longueur)}.`);
+    return;
+  }
+  const portTube = cible && montage.portMonde(montage.piece(cible.id), cible.port).type.startsWith('tube');
+  if (!montage.pieces.length || portTube) return poserTube(d);
+  tubeEnAttente = d;
+  note('Tube cintré prêt : clique la sortie de raccord de tube (anneau) où le poser. Échap pour l\'oublier.');
+  rafraichir();
+}
+
+function poserTube(d) {
+  tubeEnAttente = null;
+  if (cible) {
+    const pm = montage.portMonde(montage.piece(cible.id), cible.port);
+    if (pm.type.startsWith('tube')) $('selTaille').value = pm.taille;
+  }
+  importerTube({ text: async () => JSON.stringify({ ...d, format: 'tube-cintre' }) });
+}
+
+// ---------------------------------------------------------------------------
 // Boutons et clavier
 
 // ---------------------------------------------------------------------------
@@ -910,6 +1008,7 @@ function ouvrirFormulaire() {
 }
 
 function ajoutRapide(type) {
+  if (type === 'tb-cintre') return cintrerNouveau();
   const e = CATALOGUE[type];
   const vide = !montage.pieces.length;
   if (!vide && !cible) return note('Choisis d\'abord une sortie (anneau orange) dans la vue : la pièce s\'y branchera.', true);
@@ -1088,12 +1187,13 @@ $('btnToutEffacer').onclick = () => {
 };
 
 document.addEventListener('keydown', e => {
-  if (e.target.matches('input, select') || $('dlgImage').open || $('dlgPiece').open) return;
+  if (e.target.matches('input, select') || $('dlgImage').open || $('dlgPiece').open || modeApp === 'cintrage') return;
   if ((e.ctrlKey || e.metaKey) && (e.key.toLowerCase() === 'y' || (e.shiftKey && e.key.toLowerCase() === 'z'))) { e.preventDefault(); retablir(); return; }
   if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z') { e.preventDefault(); annuler(); return; }
   if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's') { e.preventDefault(); enregistrer(); return; }
   if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'o') { e.preventDefault(); $('fichierMontage').click(); return; }
   if (e.key === 'Escape') {
+    if (tubeEnAttente) { tubeEnAttente = null; note('Tube cintré oublié.'); return; }
     if (!$('menuPiece').hidden) { fermerMenu(); return; }
     if (document.querySelector('.menu-barre:not([hidden])')) { fermerMenusBarre(); return; }
     if (glisse) { finGlisse(true); return; }
@@ -1115,4 +1215,4 @@ document.addEventListener('keydown', e => {
 
 rafraichir();
 $('chargement').hidden = true;
-window.__conduits = { cercles, choisirManip, choisirOnglet, retablir, annuler, ouvrirMenu, materiel, catalogue, fleches, changerLongueur, ouvrirTexte, importerTexte: t => importerTube({ text: async () => t }), vue, montage, mesures, THREE, ajouter, choisirOutil, tourner, $, detacher, deplacer: (id, axe, d) => { selection = id; rafraichir(); const etat = montage.debutDeplacement(id); memoriser(); glisse = { axe, etat, d, candidat: null }; montage.deplacer(etat, AXES[axe].dir.clone().multiplyScalar(d)); glisse.candidat = montage.candidatAccrochage(etat.ids); finGlisse(); }, selectionner: id => { selection = id; rafraichir(); }, choisirSortie: (id, port) => { cible = { id, port }; rafraichir(); }, fermer: (a, b) => { demarrerFermeture(); clicFermeture(a); clicFermeture(b); } };
+window.__conduits = { modifierCintrage, cercles, choisirManip, choisirOnglet, retablir, annuler, ouvrirMenu, materiel, catalogue, fleches, changerLongueur, ouvrirTexte, importerTexte: t => importerTube({ text: async () => t }), vue, montage, mesures, THREE, ajouter, choisirOutil, tourner, $, detacher, deplacer: (id, axe, d) => { selection = id; rafraichir(); const etat = montage.debutDeplacement(id); memoriser(); glisse = { axe, etat, d, candidat: null }; montage.deplacer(etat, AXES[axe].dir.clone().multiplyScalar(d)); glisse.candidat = montage.candidatAccrochage(etat.ids); finGlisse(); }, selectionner: id => { selection = id; rafraichir(); }, choisirSortie: (id, port) => { cible = { id, port }; rafraichir(); }, fermer: (a, b) => { demarrerFermeture(); clicFermeture(a); clicFermeture(b); } };

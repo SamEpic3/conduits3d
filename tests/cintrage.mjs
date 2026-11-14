@@ -1,0 +1,37 @@
+// Mode Cintrage : la cintreuse dans un cadre ; le tube cintré revient au montage sans fichier.
+import { chromium } from 'playwright';
+const nav = await chromium.launch({ executablePath: '/usr/bin/google-chrome', args: ['--use-angle=swiftshader','--enable-unsafe-swiftshader'] });
+const page = await nav.newPage({ viewport: { width: 1200, height: 800 } });
+page.setDefaultTimeout(150000);
+const err = []; page.on('pageerror', e => err.push(e.message));
+await page.addInitScript(() => localStorage.setItem('conduits3d-vignettes-2', '{}'));
+await page.goto('file:///home/claude/conduits3d/index.html');
+await page.waitForFunction(() => window.__conduits);
+await page.evaluate(() => { const C = window.__conduits, $ = C.$;
+  $('selPiece').value = 'tb-sae-m'; $('selPiece').onchange(); $('selTaille').value = '3/8'; $('selTailleB').value = '1/4'; C.ajouter();
+  const s = C.montage.sortiesLibres().find(x => x.type.startsWith('tube')); C.choisirSortie(s.id, s.port); });
+await page.click('[data-mode-app="cintrage"]');
+const f = page.frameLocator('#cadreCintreuse');
+await f.locator('#btnInsert').click();
+const cadre = page.frames().find(fr => fr.url().includes('cintreuse.html'));
+await cadre.waitForFunction(() => window.__cint && window.__cint.state.present && !document.getElementById('btnPoser').disabled);
+await page.waitForTimeout(1500);
+await cadre.evaluate(() => { window.__cint.setLever(90); });
+await page.waitForTimeout(300);
+await page.screenshot({ path: '/tmp/t/cint1.png' });
+await f.locator('#btnPoser').click();
+await page.waitForTimeout(3000); console.log('note', await page.evaluate(() => [window.__conduits.$('note').textContent, document.body.className, window.__conduits.montage.pieces.length]), await cadre.evaluate(() => [document.getElementById('note').textContent, document.getElementById('btnPoser').disabled, getComputedStyle(document.getElementById('btnPoser')).display]));
+await page.waitForFunction(() => window.__conduits.montage.pieces.length === 2, null, { timeout: 5000 });
+await page.waitForTimeout(300);
+const r1 = await page.evaluate(() => { const C = window.__conduits; const p = C.montage.pieces[1]; return [p.type, p.cintrage.coudes.length, Math.round(p.cintrage.coudes[0].a), document.body.classList.contains('mode-cintrage'), C.$('note').textContent]; });
+await page.screenshot({ path: '/tmp/t/cint2.png' });
+// Modifier le cintrage : charge le tube dans la cintreuse, ajoute un coude, repose
+await page.evaluate(() => { const C = window.__conduits; C.selectionner(2); });
+await page.evaluate(() => window.__conduits.modifierCintrage(2));
+await cadre.waitForFunction(() => window.__cint.state.bends.length === 1);
+await cadre.evaluate(() => { window.__cint.setP(7); window.__cint.setLever(45); });
+await f.locator('#btnPoser').click();
+await page.waitForFunction(() => window.__conduits.montage.piece(2).cintrage.coudes.length === 2);
+const r2 = await page.evaluate(() => [window.__conduits.montage.pieces.length, window.__conduits.$('note').textContent]);
+console.log(JSON.stringify(r1), JSON.stringify(r2), err.join('\n') || 'ok');
+await nav.close();

@@ -43,7 +43,11 @@ Sur téléphone : outils en haut (icônes), panneau en tiroir au bas en portrait
      qui l'aligne, et accepte si le bout arrive au bon endroit (tolérance 1/16 po et 2°), sinon elle dit de combien il est trop
      long, trop court, décalé ou désaligné. En fileté NPT, il faut une union (on ne visse pas les deux bouts d'un tuyau).
    Si on tourne une pièce ensuite, la boucle s'ouvre (avec un avertissement).
-8. **Fichier ☰ → Importer un tube cintré** : dans la cintreuse 3D, onglet Relevé → « Exporter le tube (.json) » ; ici, choisis la sortie
+8. **Mode Cintrage** (en haut à gauche : Montage | Cintrage) : la cintreuse 3D au complet. « Poser dans le montage »
+   renvoie le tube directement sur la sortie de raccord de tube choisie (sinon, clique ensuite la sortie). Dans le
+   catalogue, la tuile « Tube cintré » ouvre la cintreuse ; sur un tube cintré du montage, clic droit →
+   « Modifier le cintrage » le reprend dans la cintreuse, puis le remet en place.
+   **Fichier ☰ → Importer un tube cintré** (fichier exporté par la cintreuse seule) : dans la cintreuse 3D, onglet Relevé → « Exporter le tube (.json) » ; ici, choisis la sortie
    (et la grosseur 5/16 ou 3/8), puis « Importer un tube cintré ». Le tube garde ses coudes (rayon 15/16 po).
 9. **Fichier ☰** : Nouveau montage, Ouvrir, **Enregistrer** (Ctrl+S) télécharge le montage et ses mesures dans un fichier `.json` ; **Ouvrir** (Ctrl+O) le recharge
    (Annuler revient au montage d'avant). Sur iPhone, le fichier va dans l'app Fichiers.
@@ -63,7 +67,8 @@ Sur téléphone : outils en haut (icônes), panneau en tiroir au bas en portrait
 - `vendor/` : moteur 3D Three.js r160 (licence MIT).
 
 ## Modifier
-1. Modifier les fichiers dans `src/`.
+1. Modifier les fichiers dans `src/`. `cintreuse.html` est une copie de la page du dépôt cintreuse3d
+   (`cp ../cintreuse3d/index.html cintreuse.html` après chaque changement de la cintreuse).
 2. `node build.mjs` pour régénérer `index.html` (et `dev.html`).
 3. Changer `VERSION` dans `sw.js`.
 4. Vérifier : `node tests/capture.mjs /tmp/capture.png` (capture d'écran avec Chrome),
