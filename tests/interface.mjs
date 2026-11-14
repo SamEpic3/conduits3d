@@ -1,0 +1,33 @@
+import { chromium } from 'playwright';
+const nav = await chromium.launch({ executablePath: '/usr/bin/google-chrome', args: ['--use-angle=swiftshader','--enable-unsafe-swiftshader'] });
+const page = await nav.newPage({ viewport: { width: 1200, height: 800 } });
+const err=[]; page.on('pageerror', e => err.push(e.message)); page.on('console', m => { if (m.type()==='error') err.push(m.text()); });
+await page.goto('file:///home/claude/conduits3d/index.html');
+await page.waitForFunction(() => window.__conduits);
+await page.evaluate(() => { const C = window.__conduits, $ = C.$;
+  const aj = (type, taille, L) => { $('selPiece').value = type; $('selPiece').onchange(); $('selTaille').value = taille; if (L) $('txtLongueur').value = L; C.ajouter(); };
+  aj('coude90','1/2'); aj('mamelon','1/2','4'); aj('te','1/2'); aj('mamelon','1/2','3'); aj('coude90','1/2'); C.vue.cadrer(C.montage.groupe); });
+await page.waitForTimeout(4000);
+// clic droit sur le té
+const pos = await page.evaluate(() => { const C = window.__conduits; const v = new C.THREE.Vector3().setFromMatrixPosition(C.montage.objets.get(3).matrix).project(C.vue.camera); const r = C.vue.renderer.domElement.getBoundingClientRect(); return [r.left+(v.x+1)/2*r.width, r.top+(1-v.y)/2*r.height]; });
+await page.mouse.click(pos[0], pos[1], { button: 'right' });
+await page.waitForTimeout(200);
+await page.screenshot({ path: '/tmp/t/menu.png' });
+await page.click('[data-action="rotation"]');
+await page.waitForTimeout(200);
+await page.screenshot({ path: '/tmp/t/rot.png' });
+// glisser le cercle bleu (vertical) : point sur le cercle
+const c = await page.evaluate(() => { const C = window.__conduits, g = C.cercles.groupe, T = C.THREE; const r = C.vue.renderer.domElement.getBoundingClientRect();
+  const p = a => { const v = g.position.clone().add(new T.Vector3(Math.cos(a), 0, Math.sin(a)).multiplyScalar(0.95*g.scale.x)).project(C.vue.camera); return [r.left+(v.x+1)/2*r.width, r.top+(1-v.y)/2*r.height]; };
+  return [p(0), p(0.4), p(0.8), p(1.2), p(1.5708)]; });
+await page.mouse.move(...c[0]); await page.mouse.down();
+for (const q of c.slice(1)) await page.mouse.move(...q, { steps: 4 });
+await page.mouse.up();
+const n1 = await page.evaluate(() => window.__conduits.$('note').textContent);
+await page.screenshot({ path: '/tmp/t/rot2.png' });
+await page.click('[data-onglet="materiel"]'); await page.waitForTimeout(100);
+await page.screenshot({ path: '/tmp/t/mat.png' });
+await page.keyboard.press('Control+z'); const n2 = await page.evaluate(() => window.__conduits.$('note').textContent);
+await page.keyboard.press('Control+y'); const n3 = await page.evaluate(() => window.__conduits.$('note').textContent);
+console.log(n1, '|', n2, '|', n3, '\n', err.join('\n') || 'ok');
+await nav.close();

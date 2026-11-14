@@ -276,6 +276,13 @@ export class Montage {
     this.placer();
   }
 
+  // Applique une transformation (THREE.Matrix4, ex. une rotation) au morceau, par rapport à sa position de départ.
+  deplacerMatrice(etat, M) {
+    for (const [id, m0] of etat.depart)
+      this.piece(id).ancrage = M.clone().multiply(new THREE.Matrix4().fromArray(m0)).toArray();
+    this.placer();
+  }
+
   // Écart entre deux sorties qui pourraient s'emboîter (sans tenir compte de l'orientation).
   ecartPosition(A, B) {
     const [M, F] = A.type.endsWith('-m') ? [A, B] : [B, A];

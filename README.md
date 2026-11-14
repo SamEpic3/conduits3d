@@ -16,16 +16,20 @@ Après une mise à jour du site, changer `VERSION` dans `sw.js` pour que les app
 Sur téléphone : outils en haut (icônes), panneau en tiroir au bas en portrait (à droite en paysage), repliable avec ▾.
 
 ## Utilisation
-1. Choisis une pièce et clique **Ajouter** : la première pièce se place au centre.
+1. Onglet **Ajouter** : choisis une pièce dans le catalogue en images, sa grosseur, puis **Ajouter**. La première pièce se
+   place au centre. Les pièces grisées ne se branchent pas sur la sortie choisie.
 2. Les **anneaux orange** sont les sorties libres ; clique-en une (elle devient bleue) pour y brancher la pièce suivante.
    Les filets mâles entrent de la longueur d'engagement (1/2 po : 0,500 ; 3/4 po : 0,5625).
-3. Clique une pièce pour la **tourner** autour de son joint, la brancher par une **autre sortie** ou la **supprimer**
+3. Clique une pièce : sa fiche s'ouvre (onglet **Pièce**). **Clic droit** ou **toucher long** sur une pièce : menu
+   Translation, Rotation, Changer la longueur, Changer de sortie, Détacher, Fiche, Supprimer
    (seule cette pièce est enlevée : ce qui était branché dessus reste en place, et se rebranche avec « Fermer une boucle »).
-4. **Déplacer** : la pièce choisie montre trois flèches (rouge = X, verte = profondeur, bleue = verticale).
-   Glisse une flèche : tout le morceau relié à la pièce suit, au 1/16 po. **Détacher** sépare la pièce pour la bouger seule.
+4. **Translation** (G) : trois flèches (rouge = X, verte = profondeur, bleue = verticale). Glisse une flèche : tout le
+   morceau relié à la pièce suit, au 1/16 po. **Rotation** (R) : cercles rouge, vert et bleu pour tourner le morceau
+   autour de la pièce, et un cercle cuivre pour tourner la pièce autour de son joint, par pas de 5, 15, 45 ou 90°.
+   **Détacher** sépare la pièce pour la bouger seule.
    Si, en lâchant, une sortie du morceau est à moins de 1/2 po d'une sortie compatible (anneaux verts), le morceau
    s'aligne et se branche tout seul ; un autre bout qui arrive alors pile dans un raccord (tube, cuivre) ferme la boucle.
-   Échap pendant le glissement annule.
+   Échap pendant le glissement annule. Près d'une sortie compatible, le morceau se branche aussi après une rotation.
 5. **Changer la longueur** d'un tuyau ou d'un tube droit (fiche de la pièce) : le côté qui compte le moins de pièces
    glisse dans l'axe, rien ne se débranche. Dans une boucle, l'autre tuyau droit parallèle de la boucle s'ajuste
    d'autant ; s'il n'y en a pas (ou s'il deviendrait trop court), l'app refuse et explique pourquoi.
@@ -44,7 +48,8 @@ Sur téléphone : outils en haut (icônes), panneau en tiroir au bas en portrait
 10. **Ortho** (O) bascule entre la perspective et la vue orthogonale (sans perspective, comme un dessin technique).
 11. **Image** exporte un PNG : vue (actuelle, 3D, face, dessus, côté), projection, format, mesures ou non, coupe ou non,
     fond blanc ou transparent. Les anneaux des sorties, les flèches et la surbrillance n'y sont jamais.
-12. **Coupe** montre l'intérieur ; **Annuler** (Ctrl+Z) revient en arrière.
+12. **Coupe** montre l'intérieur ; **Annuler** (Ctrl+Z) revient en arrière, **Rétablir** (Ctrl+Y) refait.
+13. Onglet **Matériel** : les pièces comptées par sorte et grosseur, avec chaque longueur de coupe ; « Copier la liste ».
 
 ## Fichiers
 - `index.html` : l'application complète en un seul fichier (fonctionne aussi hors ligne, par double-clic). **Généré** : ne pas modifier à la main.

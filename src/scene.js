@@ -154,6 +154,29 @@ export function creerScene(canvas) {
       redimensionner();
       return sortie;
     },
+    // Petite image d'une autre scène (vignettes du catalogue), avec le même éclairage ; la vue principale est
+    // redessinée tout de suite après, sans clignement.
+    vignette(objet, W = 160) {
+      const sc = new THREE.Scene();
+      sc.environment = scene.environment;
+      const l = lum.clone(); sc.add(l, new THREE.HemisphereLight(0xffffff, 0x8a8f96, 0.35));
+      sc.add(objet);
+      const boite = new THREE.Box3().setFromObject(objet), sphere = boite.getBoundingSphere(new THREE.Sphere());
+      const c = new THREE.PerspectiveCamera(28, 1, 0.01, 100);
+      const dir = new THREE.Vector3(1, 0.75, 1.15).normalize();
+      c.position.copy(sphere.center).addScaledVector(dir, sphere.radius / Math.sin(THREE.MathUtils.degToRad(14)) * 1.02);
+      c.lookAt(sphere.center);
+      const ratio = renderer.getPixelRatio(), plans = renderer.clippingPlanes;
+      renderer.setPixelRatio(1); renderer.setSize(W, W, false); renderer.clippingPlanes = [];
+      renderer.render(sc, c);
+      const toile = Object.assign(document.createElement('canvas'), { width: W, height: W });
+      toile.getContext('2d').drawImage(renderer.domElement, 0, 0);
+      sc.remove(objet);
+      renderer.clippingPlanes = plans; renderer.setPixelRatio(ratio);
+      redimensionner();
+      renderer.render(scene, cam);
+      return toile;
+    },
     // Bascule entre perspective et orthogonale en gardant à peu près la même grandeur à l'écran.
     projection(orthogonale) {
       if (orthogonale === (cam === ortho)) return;

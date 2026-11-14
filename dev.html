@@ -70,6 +70,39 @@ ol.coudes{margin:2px 0 0;padding-left:20px;font:500 12.5px var(--mono)}
 .toolbar button.on{background:var(--copper);color:#fff}
 .toolbar .sep{width:1px;align-self:stretch;background:var(--line);margin:4px 2px}
 #modes{top:58px}
+#barreRot{top:58px;align-items:center}
+@media (max-width:1320px){.toolbar .txt.opt{display:none}}
+.toolbar{flex-wrap:nowrap}
+#barreRot .etiq{font-size:13px;color:var(--muted);padding:0 6px}
+.onglets{display:flex;gap:2px;background:var(--bg);border-radius:9px;padding:3px}
+.onglets button{flex:1;border:0;background:transparent;padding:7px 2px;font-size:12.5px;border-radius:7px;color:var(--muted)}
+.onglets button.on{background:var(--panel);color:var(--fg);box-shadow:0 1px 3px rgb(0 0 0 / .12)}
+.onglets button .pastille{display:inline-block;min-width:16px;padding:0 4px;margin-left:3px;border-radius:999px;background:var(--copper-soft);color:var(--copper-strong);font:600 10.5px/16px var(--mono)}
+.panel section{border-top:0;padding-top:0}
+.panel section h3{margin-top:6px}
+#secPiece{display:grid;gap:8px}
+.catalogue{display:grid;gap:10px}
+.catalogue .famille{font:600 12px var(--body);text-transform:uppercase;letter-spacing:.5px;color:var(--muted);margin:2px 0 -4px}
+.catalogue .tuiles{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
+.tuile{display:grid;gap:2px;justify-items:center;padding:4px 3px 6px;border:1.5px solid var(--line);border-radius:9px;background:var(--panel);white-space:normal;font:500 11.5px/1.15 var(--body);text-align:center;color:var(--fg)}
+.tuile img,.tuile .vide{width:100%;aspect-ratio:1;object-fit:contain}
+.tuile .vide{display:block;border-radius:6px;background:linear-gradient(110deg,var(--bg) 40%,var(--line) 50%,var(--bg) 60%) 0 0/200% 100%;animation:miroite 1.2s linear infinite}
+@keyframes miroite{to{background-position:-200% 0}}
+.tuile.on{border-color:var(--copper);background:var(--copper-soft)}
+.tuile.non{opacity:.32}
+.choix{display:grid;gap:8px;position:sticky;bottom:-14px;background:var(--panel);padding:8px 0 4px;border-top:1px solid var(--line)}
+.choix strong{font:600 15px var(--body)}
+#listeMateriel table{width:100%;border-collapse:collapse;font-size:13.5px}
+#listeMateriel th{text-align:left;font-weight:600;color:var(--muted);font-size:12px;border-bottom:1px solid var(--line);padding:4px 4px}
+#listeMateriel td{border-bottom:1px solid var(--line);padding:5px 4px;vertical-align:top}
+#listeMateriel td.q{font:600 13px var(--mono);text-align:right;width:2.5em}
+#listeMateriel td.l{font:500 12.5px var(--mono);color:var(--muted)}
+#listeMateriel tr.fam td{font-weight:600;color:var(--copper-strong);border-bottom:0;padding-top:10px}
+.menu{position:absolute;z-index:20;min-width:210px;display:grid;padding:5px;border-radius:11px;background:var(--panel);border:1px solid var(--line);box-shadow:0 10px 30px rgb(0 0 0 / .22)}
+.menu-titre{font:600 12.5px var(--body);color:var(--muted);padding:5px 9px 6px;border-bottom:1px solid var(--line);margin-bottom:3px}
+.menu button{border:0;background:transparent;text-align:left;padding:9px 10px;border-radius:7px;display:flex;justify-content:space-between;gap:16px;font-weight:500}
+.menu button:hover:not(:disabled){background:var(--bg)}
+.menu kbd{font:500 11px var(--mono);color:var(--muted)}
 dialog#dlgImage{border:1px solid var(--line);border-radius:14px;padding:0;background:var(--panel);color:var(--fg);width:min(760px,94vw);box-shadow:0 12px 40px rgb(0 0 0 / .3)}
 dialog#dlgImage::backdrop{background:rgb(0 0 0 / .35)}
 .dlg{display:grid;gap:14px;padding:18px}
@@ -91,7 +124,9 @@ label.check{display:flex;gap:8px;align-items:center;color:var(--fg);font-size:14
   .toolbar button{padding:8px 9px;font-size:16px;min-width:38px;flex:none}
   .toolbar [data-vue]{font-size:13px;padding:8px 6px}
   .toolbar .sep{flex:none}
-  #modes{top:calc(env(safe-area-inset-top) + 56px);right:auto}
+  #modes,#barreRot{top:calc(env(safe-area-inset-top) + 56px);right:auto}
+  .catalogue .tuiles{grid-template-columns:repeat(4,1fr)}
+  .choix{position:static;border-top:0;padding:0}
   .replier{display:inline-block}
   .panel.replie .contenu{display:none}
   .panel.replie .replier{transform:rotate(180deg)}
@@ -135,7 +170,8 @@ label.check{display:flex;gap:8px;align-items:center;color:var(--fg);font-size:14
     <button data-outil="main" class="on" title="Sélection (S) : choisis une sortie ou une pièce"><span class="ic">✋</span><span class="txt"> Sélection</span></button>
     <button data-outil="mesure" title="Mesure (M) : clique deux points repères"><span class="ic">📏</span><span class="txt"> Mesure</span></button>
     <span class="sep"></span>
-    <button id="btnAnnuler" title="Annuler (Ctrl+Z)" disabled><span class="ic">↶</span><span class="txt"> Annuler</span></button>
+    <button id="btnAnnuler" title="Annuler (Ctrl+Z)" disabled><span class="ic">↶</span><span class="txt opt"> Annuler</span></button>
+    <button id="btnRetablir" title="Rétablir (Ctrl+Y)" disabled><span class="ic">↷</span><span class="txt opt"> Rétablir</span></button>
     <button id="btnCoupe" title="Vue en coupe"><span class="ic">◧</span><span class="txt"> Coupe</span></button>
     <button id="btnOrtho" title="Vue orthogonale (O) : sans perspective"><span class="ic">⊡</span><span class="txt"> Ortho</span></button>
     <button id="btnImage" title="Exporter une image (PNG)"><span class="ic">🖼</span><span class="txt"> Image</span></button>
@@ -151,6 +187,23 @@ label.check{display:flex;gap:8px;align-items:center;color:var(--fg);font-size:14
     <button data-mode="y" title="Écart selon Y (hauteur)">↕ Y</button>
     <button data-mode="z" title="Écart selon Z (profondeur)">⊙ Z</button>
   </div>
+  <div class="toolbar" id="barreRot" aria-label="Pas de rotation" hidden>
+    <span class="etiq">Pas</span>
+    <button data-pas="5">5°</button>
+    <button data-pas="15" class="on">15°</button>
+    <button data-pas="45">45°</button>
+    <button data-pas="90">90°</button>
+  </div>
+  <div id="menuPiece" class="menu" role="menu" hidden>
+    <div class="menu-titre" id="menuTitre"></div>
+    <button role="menuitem" data-action="translation">✥ Translation <kbd>G</kbd></button>
+    <button role="menuitem" data-action="rotation">⟳ Rotation <kbd>R</kbd></button>
+    <button role="menuitem" data-action="longueur">↔ Changer la longueur</button>
+    <button role="menuitem" data-action="sortie">⇄ Changer de sortie</button>
+    <button role="menuitem" data-action="detacher">✂ Détacher</button>
+    <button role="menuitem" data-action="fiche">ⓘ Fiche de la pièce</button>
+    <button role="menuitem" data-action="supprimer" class="danger">🗑 Supprimer <kbd>Suppr</kbd></button>
+  </div>
   <p id="note">Choisis une pièce, puis clique « Ajouter » pour commencer le montage.</p>
 
   <aside class="panel">
@@ -159,112 +212,122 @@ label.check{display:flex;gap:8px;align-items:center;color:var(--fg);font-size:14
       <button id="btnPanneau" class="replier" aria-expanded="true" aria-controls="contenuPanneau" title="Replier ou ouvrir le panneau">▾</button>
     </div>
     <div class="contenu" id="contenuPanneau">
+    <div class="onglets" role="tablist" aria-label="Sections du panneau">
+      <button role="tab" data-onglet="pieces" class="on">Ajouter</button>
+      <button role="tab" data-onglet="piece">Pièce</button>
+      <button role="tab" data-onglet="materiel">Matériel</button>
+      <button role="tab" data-onglet="mesures">Mesures</button>
+    </div>
 
-    <section>
-      <h3>Ajouter une pièce</h3>
-      <label>Pièce
-        <select id="selPiece">
-          <optgroup label="Acier NPT (fonte malléable noire)">
-            <option value="mamelon">Mamelon / tuyau</option>
-            <option value="manchon">Manchon</option>
-            <option value="coude90">Coude 90°</option>
-            <option value="coude45">Coude 45°</option>
-            <option value="te">Té</option>
-            <option value="union">Union</option>
-            <option value="reducteur">Réducteur hexagonal (mâle × femelle)</option>
-            <option value="bouchon">Bouchon à tête carrée</option>
-            <option value="capuchon">Capuchon</option>
-          </optgroup>
-          <optgroup label="Cuivre à souder">
-            <option value="cu-tube">Tube de cuivre</option>
-            <option value="cu-manchon">Manchon</option>
-            <option value="cu-coude90">Coude 90°</option>
-            <option value="cu-coude45">Coude 45°</option>
-            <option value="cu-te">Té</option>
-            <option value="cu-union">Union</option>
-            <option value="cu-capuchon">Capuchon</option>
-            <option value="cu-adaptM">Adaptateur cuivre × NPT mâle</option>
-            <option value="cu-adaptF">Adaptateur cuivre × NPT femelle</option>
-          </optgroup>
-          <optgroup label="Raccords de tube (laiton)">
-            <option value="tb-tube">Tube de cuivre recuit</option>
-            <option value="tb-sae-m">Connecteur SAE 45° × NPT mâle</option>
-            <option value="tb-sae-f">Connecteur SAE 45° × NPT femelle</option>
-            <option value="tb-if-m">Connecteur inverted flare × NPT mâle</option>
-            <option value="tb-if-f">Connecteur inverted flare × NPT femelle</option>
-            <option value="tb-comp-m">Connecteur compression × NPT mâle</option>
-            <option value="tb-comp-f">Connecteur compression × NPT femelle</option>
-          </optgroup>
-        </select>
-      </label>
-      <div class="row">
-        <label><span id="lblTailleTexte">Diamètre nominal</span>
-          <select id="selTaille"><option>1/2</option><option>3/4</option></select>
-        </label>
-        <label id="lblTailleB" hidden><span id="lblTailleBTexte">Filet NPT</span>
-          <select id="selTailleB"><option>1/2</option><option>3/4</option></select>
-        </label>
-        <label id="lblLongueur">Longueur (po)
-          <input type="text" id="txtLongueur" list="longueursStd" value="3" inputmode="decimal">
-          <datalist id="longueursStd"></datalist>
-        </label>
+    <section data-panneau="pieces">
+      <select id="selPiece" hidden aria-hidden="true">
+        <optgroup label="Acier NPT">
+          <option value="mamelon">Mamelon / tuyau</option>
+          <option value="manchon">Manchon</option>
+          <option value="coude90">Coude 90°</option>
+          <option value="coude45">Coude 45°</option>
+          <option value="te">Té</option>
+          <option value="union">Union</option>
+          <option value="reducteur">Réducteur hexagonal</option>
+          <option value="bouchon">Bouchon</option>
+          <option value="capuchon">Capuchon</option>
+        </optgroup>
+        <optgroup label="Cuivre à souder">
+          <option value="cu-tube">Tube de cuivre</option>
+          <option value="cu-manchon">Manchon</option>
+          <option value="cu-coude90">Coude 90°</option>
+          <option value="cu-coude45">Coude 45°</option>
+          <option value="cu-te">Té</option>
+          <option value="cu-union">Union</option>
+          <option value="cu-capuchon">Capuchon</option>
+          <option value="cu-adaptM">Adaptateur × NPT mâle</option>
+          <option value="cu-adaptF">Adaptateur × NPT femelle</option>
+        </optgroup>
+        <optgroup label="Raccords de tube">
+          <option value="tb-tube">Tube recuit</option>
+          <option value="tb-sae-m">SAE 45° × NPT mâle</option>
+          <option value="tb-sae-f">SAE 45° × NPT femelle</option>
+          <option value="tb-if-m">Inverted flare × NPT mâle</option>
+          <option value="tb-if-f">Inverted flare × NPT femelle</option>
+          <option value="tb-comp-m">Compression × NPT mâle</option>
+          <option value="tb-comp-f">Compression × NPT femelle</option>
+        </optgroup>
+      </select>
+      <div id="catalogue" class="catalogue"></div>
+      <div class="choix">
+        <strong id="nomChoisi"></strong>
+        <div class="row">
+          <label><span id="lblTailleTexte">Diamètre nominal</span>
+            <select id="selTaille"><option>1/2</option><option>3/4</option></select>
+          </label>
+          <label id="lblTailleB" hidden><span id="lblTailleBTexte">Filet NPT</span>
+            <select id="selTailleB"><option>1/2</option><option>3/4</option></select>
+          </label>
+          <label id="lblLongueur">Longueur (po)
+            <input type="text" id="txtLongueur" list="longueursStd" value="3" inputmode="decimal">
+            <datalist id="longueursStd"></datalist>
+          </label>
+        </div>
+        <button id="btnAjouter" class="primary">＋ Ajouter</button>
+        <p class="muted" id="indice"></p>
       </div>
-      <button id="btnAjouter" class="primary">＋ Ajouter</button>
-      <button id="btnImporter" title="Poser un tube cintré exporté par la cintreuse 3D (fichier .json)">⤓ Importer un tube cintré</button>
+      <div class="row">
+        <button id="btnImporter" title="Poser un tube cintré exporté par la cintreuse 3D (fichier .json)">⤓ Tube cintré</button>
+        <button id="btnFermer" title="Relier deux sorties face à face avec le tuyau ou le tube de la bonne longueur">⟲ Fermer une boucle</button>
+      </div>
       <input type="file" id="fichierTube" accept=".json,application/json" hidden>
-      <button id="btnFermer" title="Relier deux sorties face à face avec le tuyau ou le tube de la bonne longueur">⟲ Fermer une boucle</button>
-      <p class="muted" id="indice"></p>
+      <h3>Fichier</h3>
+      <div class="row">
+        <button id="btnEnregistrer" title="Télécharge le montage et ses mesures dans un fichier .json (Ctrl+S)">💾 Enregistrer</button>
+        <button id="btnOuvrir" title="Ouvre un montage enregistré (Ctrl+O)">📂 Ouvrir</button>
+        <input type="file" id="fichierMontage" accept=".json,application/json" hidden>
+      </div>
+      <button id="btnToutEffacer" class="danger">Nouveau montage</button>
     </section>
 
-    <section id="secPiece" hidden>
-      <h3>Pièce choisie</h3>
-      <div id="fiche"></div>
-      <div id="rangLongueur" hidden>
-        <label for="txtNouvLongueur">Changer la longueur (po)</label>
-        <div class="row">
-          <input type="text" id="txtNouvLongueur" inputmode="decimal" list="longueursPiece" autocomplete="off">
-          <datalist id="longueursPiece"></datalist>
-          <button id="btnLongueur" title="Les raccords glissent dans l'axe : rien ne se débranche">Appliquer</button>
+    <section data-panneau="piece" hidden>
+      <p class="muted" id="pieceVide">Clique une pièce dans la vue pour voir sa fiche. Clic droit (ou toucher long) sur une pièce : menu des actions.</p>
+      <div id="secPiece" hidden>
+        <div id="fiche"></div>
+        <div id="rangLongueur" hidden>
+          <label for="txtNouvLongueur">Changer la longueur (po)</label>
+          <div class="row">
+            <input type="text" id="txtNouvLongueur" inputmode="decimal" list="longueursPiece" autocomplete="off">
+            <datalist id="longueursPiece"></datalist>
+            <button id="btnLongueur" title="Les raccords glissent dans l'axe : rien ne se débranche">Appliquer</button>
+          </div>
         </div>
-      </div>
-      <div class="row">
-        <button data-tourner="-90" title="Tourner autour du joint">↺ 90°</button>
-        <button data-tourner="-45">↺ 45°</button>
-        <button data-tourner="45">↻ 45°</button>
-        <button data-tourner="90">↻ 90°</button>
-      </div>
-      <div class="row">
-        <label class="check" style="flex:1.4">Tourner de <input type="text" id="txtAngle" value="5" inputmode="decimal" style="width:64px"> °</label>
-        <button id="btnTournerDe">Tourner</button>
-      </div>
-      <div class="row">
-        <button id="btnSortie" title="Brancher la pièce par une autre de ses sorties">⇄ Changer de sortie</button>
-        <button id="btnDetacher" title="Sépare la pièce du montage pour la déplacer seule">✂ Détacher</button>
-      </div>
-      <div class="row">
+        <div class="row">
+          <button id="btnTranslation" title="Flèches de déplacement (G)">✥ Translation</button>
+          <button id="btnRotation" title="Cercles de rotation (R)">⟳ Rotation</button>
+        </div>
+        <div class="row">
+          <button data-tourner="-90" title="Tourner autour du joint">↺ 90°</button>
+          <button data-tourner="-45">↺ 45°</button>
+          <button data-tourner="45">↻ 45°</button>
+          <button data-tourner="90">↻ 90°</button>
+        </div>
+        <div class="row">
+          <label class="check" style="flex:1.4">Tourner de <input type="text" id="txtAngle" value="5" inputmode="decimal" style="width:64px"> °</label>
+          <button id="btnTournerDe">Tourner</button>
+        </div>
+        <div class="row">
+          <button id="btnSortie" title="Brancher la pièce par une autre de ses sorties">⇄ Changer de sortie</button>
+          <button id="btnDetacher" title="Sépare la pièce du montage pour la déplacer seule">✂ Détacher</button>
+        </div>
         <button id="btnSupprimer" class="danger" title="Supprimer (Suppr) : ce qui est branché dessus reste en place">🗑 Supprimer</button>
       </div>
     </section>
 
-    <section>
-      <h3>Mesures</h3>
-      <ol id="listeMesures"></ol>
-      <p class="muted" id="mesVide">Outil Mesure : clique deux points repères (centre d'un raccord en violet, face ou bout de tuyau en gris).</p>
-      <div class="row">
-        <button id="btnEffMesures" disabled>Effacer les mesures</button>
-      </div>
+    <section data-panneau="materiel" hidden>
+      <div id="listeMateriel"></div>
+      <button id="btnCopierMateriel" title="Copie la liste en texte (pour un courriel ou un document)">📋 Copier la liste</button>
     </section>
 
-    <section>
-      <h3>Fichier</h3>
-      <div class="row">
-        <button id="btnEnregistrer" title="Télécharge le montage et ses mesures dans un fichier .json">💾 Enregistrer</button>
-        <button id="btnOuvrir" title="Ouvre un montage enregistré">📂 Ouvrir</button>
-        <input type="file" id="fichierMontage" accept=".json,application/json" hidden>
-      </div>
-      <div class="row">
-        <button id="btnToutEffacer" class="danger">Nouveau montage</button>
-      </div>
+    <section data-panneau="mesures" hidden>
+      <ol id="listeMesures"></ol>
+      <p class="muted" id="mesVide">Outil Mesure : clique deux points repères (centre d'un raccord en violet, face ou bout de tuyau en gris).</p>
+      <button id="btnEffMesures" disabled>Effacer les mesures</button>
     </section>
     </div>
   </aside>

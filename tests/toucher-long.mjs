@@ -1,0 +1,22 @@
+// Téléphone : toucher long sur une pièce → menu ; puis l'onglet Ajouter avec le catalogue.
+import { chromium } from 'playwright';
+const nav = await chromium.launch({ executablePath: '/usr/bin/google-chrome', args: ['--use-angle=swiftshader','--enable-unsafe-swiftshader'] });
+const page = await nav.newPage({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true, deviceScaleFactor: 2 });
+const err=[]; page.on('pageerror', e => err.push(e.message));
+await page.goto('file:///home/claude/conduits3d/index.html');
+await page.waitForFunction(() => window.__conduits);
+await page.evaluate(() => { const C = window.__conduits, $ = C.$;
+  const aj = (type, taille, L) => { $('selPiece').value = type; $('selPiece').onchange(); $('selTaille').value = taille; if (L) $('txtLongueur').value = L; C.ajouter(); };
+  aj('cu-coude90','1/2'); aj('cu-tube','1/2','4'); aj('cu-coude90','1/2'); C.vue.cadrer(C.montage.groupe); });
+await page.waitForTimeout(500);
+const pos = await page.evaluate(() => { const C = window.__conduits; const v = new C.THREE.Vector3().setFromMatrixPosition(C.montage.objets.get(2).matrix).project(C.vue.camera); const r = C.vue.renderer.domElement.getBoundingClientRect(); return [r.left+(v.x+1)/2*r.width, r.top+(1-v.y)/2*r.height]; });
+await page.evaluate(([x, y]) => { const cv = document.getElementById('cv'); cv.dispatchEvent(new PointerEvent('pointerdown', { clientX: x, clientY: y, pointerType: 'touch', pointerId: 7, bubbles: true, isPrimary: true })); }, pos);
+await page.waitForFunction(() => !document.getElementById('menuPiece').hidden, null, { timeout: 15000 });
+const menu = await page.evaluate(() => [!document.getElementById('menuPiece').hidden, document.getElementById('menuTitre').textContent]);
+await page.screenshot({ path: '/tmp/t/long.png' });
+await page.evaluate(() => document.querySelector('[data-action="translation"]').click());
+await page.evaluate(() => window.__conduits.choisirOnglet('pieces'));
+await page.waitForTimeout(300);
+await page.screenshot({ path: '/tmp/t/catmobile.png' });
+console.log(JSON.stringify(menu), err.join('\n') || 'ok');
+await nav.close();

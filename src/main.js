@@ -8,18 +8,26 @@ import { CATALOGUE } from 'app/catalogue.js';
 import { Montage } from 'app/montage.js';
 import { lireTubeCintre } from 'app/geometrie/cintrage.js';
 import { Mesures, NOMS_MODES, longueurMesure, fmtPo } from 'app/mesure.js';
-import { Fleches, AXES } from 'app/fleches.js';
+import { Fleches, Cercles, AXES } from 'app/fleches.js';
+import { creerCatalogue } from 'app/catalogue-ui.js';
 
 const $ = id => document.getElementById(id);
 const vue = creerScene($('cv'));
 const montage = new Montage(vue.scene);
 const mesures = new Mesures(vue, $('etiquettes'));
 const fleches = new Fleches(vue);
+const cercles = new Cercles(vue);
 
 let outil = 'main';
 let cible = null;         // sortie choisie {id, port}
 let selection = null;     // id de la pièce choisie
 let glisse = null;         // déplacement en cours avec une flèche
+let tourne = null;         // rotation en cours avec un cercle
+let manip = null;          // outil affiché sur la pièce choisie : null, 'translation' ou 'rotation'
+let manipPour = null;      // … pour quelle pièce
+let pas = 15;              // pas de rotation (degrés)
+let onglet = 'pieces';
+const refaire = [];
 let fermeture = null;     // mode « fermer une boucle » : null, ou { premiere: sortie ou null }
 const historique = [];
 
@@ -61,6 +69,25 @@ function lireLongueur(txt) {
   const m = t.match(/^(\d+(?:\.\d+)?)?\s*(?:(\d+)\s*\/\s*(\d+))?$/);
   if (!m || (!m[1] && !m[2])) return NaN;
   return (m[1] ? parseFloat(m[1]) : 0) + (m[2] ? parseInt(m[2]) / parseInt(m[3]) : 0);
+}
+
+// « femelle NPT 1/2 po », « douille de cuivre 3/4 po »…
+function decrirePort(pm) {
+  const [fam, genre] = pm.type.split('-');
+  const t = `${pm.taille} po`;
+  if (fam === 'npt') return genre === 'f' ? `filet femelle NPT ${t}` : `filet mâle NPT ${t}`;
+  if (fam === 'cu') return genre === 'f' ? `douille de cuivre ${t}, reçoit un tube` : `bout de tube de cuivre ${t}`;
+  return genre === 'f' ? `raccord de tube ${t}` : `bout de tube ${t}`;
+}
+
+// Choisit d'avance la grosseur qui va sur la sortie choisie.
+function tailleSelonCible() {
+  if (!cible) return;
+  const pm = montage.portMonde(montage.piece(cible.id), cible.port);
+  const e = CATALOGUE[$('selPiece').value], fam = pm.type.split('-')[0];
+  if (e.famille === fam && e.listeTailles.includes(pm.taille)) $('selTaille').value = pm.taille;
+  else if (e.listeTaillesB?.includes(pm.taille)) $('selTailleB').value = pm.taille;
+  majPanneau();
 }
 
 // ---------------------------------------------------------------------------
@@ -120,10 +147,32 @@ function centrePiece(id) {
   return o ? new THREE.Box3().setFromObject(o).getCenter(new THREE.Vector3()) : null;
 }
 
+// Axe du joint de la pièce (direction de la sortie du parent), pour le cercle cuivre.
+function axeJoint(id) {
+  const p = montage.piece(id);
+  return p?.lien ? montage.portMonde(montage.piece(p.lien.parent), p.lien.port).sortie : null;
+}
+
 function placerFleches() {
-  const visible = selection && outil === 'main' && !fermeture;
-  fleches.montrer(visible ? centrePiece(selection) : null);
+  if (manipPour !== selection) manip = null;
+  const ok = selection && outil === 'main' && !fermeture;
+  fleches.montrer(ok && manip === 'translation' ? centrePiece(selection) : null);
+  cercles.montrer(ok && manip === 'rotation' ? centrePiece(selection) : null, ok && manip === 'rotation' ? axeJoint(selection) : null);
+  $('barreRot').hidden = !(ok && manip === 'rotation') || outil === 'mesure';
+  $('btnTranslation').classList.toggle('on', manip === 'translation');
+  $('btnRotation').classList.toggle('on', manip === 'rotation');
   if (!glisse) fleches.actif(-1);
+  if (!tourne) cercles.actif(-1);
+}
+
+function choisirManip(m) {
+  if (!selection) return;
+  manip = manip === m ? null : m;
+  manipPour = selection;
+  placerFleches();
+  vue.demander();
+  if (manip === 'translation') note('Translation : glisse une flèche (rouge = X, verte = profondeur, bleue = verticale). Tout le morceau suit, au 1/16 po ; près d\'une sortie compatible, il se branche quand tu lâches.');
+  if (manip === 'rotation') note(`Rotation : glisse un cercle (rouge, vert, bleu : tout le morceau tourne autour de la pièce${axeJoint(selection) ? ' ; cuivre : la pièce tourne autour de son joint' : ''}), par pas de ${pas}°.`);
 }
 
 const accroche = new THREE.Group();
@@ -175,6 +224,9 @@ function remplir(sel, liste) {
 
 function majPanneau() {
   const entree = CATALOGUE[$('selPiece').value];
+  $('nomChoisi').textContent = entree.nom;
+  verifierCible();
+  catalogue.compatibles(cible ? montage.portMonde(montage.piece(cible.id), cible.port) : null);
   remplir($('selTaille'), entree.listeTailles);
   if (entree.listeTaillesB) remplir($('selTailleB'), entree.listeTaillesB);
   $('lblLongueur').hidden = !entree.longueur;
@@ -191,10 +243,17 @@ function majPanneau() {
       ? `Sera branchée sur la sortie en bleu (${nomPiece(montage.piece(cible.id))}).`
       : 'Clique sur une sortie (anneau orange) pour choisir où brancher la pièce.';
   $('btnAjouter').disabled = !vide && !cible;
+  const tuile = document.querySelector(`.tuile[data-type="${$('selPiece').value}"]`);
+  if (cible && tuile?.classList.contains('non')) {
+    $('btnAjouter').disabled = true;
+    $('indice').textContent = `Cette pièce ne se branche pas sur la sortie choisie (${decrirePort(montage.portMonde(montage.piece(cible.id), cible.port))}). Choisis une pièce qui n'est pas grisée.`;
+  }
 
   // Fiche de la pièce choisie
   const p = selection && montage.piece(selection);
   $('secPiece').hidden = !p;
+  $('pieceVide').hidden = !!p;
+
   if (p) {
     const e = CATALOGUE[p.type];
     const par = p.lien && montage.piece(p.lien.parent);
@@ -226,11 +285,79 @@ function majPanneau() {
   $('mesVide').hidden = mesures.liste.length > 0;
   $('btnEffMesures').disabled = !mesures.liste.length;
   $('btnAnnuler').disabled = !historique.length;
+  $('btnRetablir').disabled = !refaire.length;
+  majMateriel();
+  const pastille = n => n ? ` <span class="pastille">${n}</span>` : '';
+  document.querySelector('[data-onglet="materiel"]').innerHTML = 'Matériel' + pastille(montage.pieces.length);
+  document.querySelector('[data-onglet="mesures"]').innerHTML = 'Mesures' + pastille(mesures.liste.length);
 }
+
+// ---------------------------------------------------------------------------
+// Onglets du panneau
+
+function choisirOnglet(o) {
+  onglet = o;
+  document.querySelectorAll('[data-onglet]').forEach(b => { b.classList.toggle('on', b.dataset.onglet === o); b.setAttribute('aria-selected', String(b.dataset.onglet === o)); });
+  document.querySelectorAll('[data-panneau]').forEach(s => { s.hidden = s.dataset.panneau !== o; });
+  const panneau = document.querySelector('.panel');
+  if (panneau.classList.contains('replie')) { panneau.classList.remove('replie'); $('btnPanneau').setAttribute('aria-expanded', 'true'); }
+}
+document.querySelectorAll('[data-onglet]').forEach(b => b.onclick = () => choisirOnglet(b.dataset.onglet));
+
+// ---------------------------------------------------------------------------
+// Liste de matériel : pièces comptées par sorte et grosseur ; tuyaux et tubes avec chaque longueur de coupe.
+
+const FAMILLES = { npt: 'Acier NPT', cu: 'Cuivre à souder', tube: 'Raccords de tube' };
+function materiel() {
+  const groupes = new Map();
+  for (const p of montage.pieces) {
+    const e = CATALOGUE[p.type];
+    const cle = `${e.famille}|${p.type}|${p.taille}|${p.tailleB ?? ''}`;
+    if (!groupes.has(cle)) groupes.set(cle, { e, p, n: 0, longueurs: [] });
+    const g = groupes.get(cle);
+    g.n++;
+    if (e.longueur) g.longueurs.push(p.longueur);
+    if (p.cintrage) g.longueurs.push(p.cintrage.longueur);
+  }
+  const ordre = Object.keys(FAMILLES);
+  return [...groupes.values()].sort((a, b) => ordre.indexOf(a.e.famille) - ordre.indexOf(b.e.famille) || (!!a.e.longueur - !!b.e.longueur) || a.e.nom.localeCompare(b.e.nom, 'fr'))
+    .map(g => ({ famille: g.e.famille, n: g.n,
+      nom: `${g.e.nom} ${g.p.taille}${g.p.tailleB ? ` × ${g.p.tailleB}` : ''} po`,
+      longueurs: g.longueurs.sort((a, b) => b - a),
+      total: g.longueurs.reduce((a, b) => a + b, 0), cintre: !!g.p.cintrage }));
+}
+
+function majMateriel() {
+  const liste = materiel();
+  if (!liste.length) { $('listeMateriel').innerHTML = '<p class="muted">Le montage est vide.</p>'; $('btnCopierMateriel').disabled = true; return; }
+  $('btnCopierMateriel').disabled = false;
+  let fam = null, html = '<table><thead><tr><th>Qté</th><th>Pièce</th></tr></thead><tbody>';
+  for (const l of liste) {
+    if (l.famille !== fam) { fam = l.famille; html += `<tr class="fam"><td colspan="2">${FAMILLES[fam]}</td></tr>`; }
+    const det = l.longueurs.length
+      ? `<div class="l">${l.cintre ? 'longueur développée' : 'coupes'} : ${l.longueurs.map(v => po3(v)).join(' · ')} po${l.longueurs.length > 1 ? ` — total ${po3(l.total)} po` : ''}</div>` : '';
+    html += `<tr><td class="q">${l.n}</td><td>${l.nom}${det}</td></tr>`;
+  }
+  $('listeMateriel').innerHTML = html + '</tbody></table>';
+}
+
+function texteMateriel() {
+  let fam = null, t = 'Liste de matériel — Conduits 3D\n';
+  for (const l of materiel()) {
+    if (l.famille !== fam) { fam = l.famille; t += `\n${FAMILLES[fam]}\n`; }
+    t += `  ${l.n} × ${l.nom}` + (l.longueurs.length ? ` (${l.longueurs.map(v => po3(v) + ' po').join(', ')}${l.longueurs.length > 1 ? ` ; total ${po3(l.total)} po` : ''})` : '') + '\n';
+  }
+  return t;
+}
+$('btnCopierMateriel').onclick = async () => {
+  try { await navigator.clipboard.writeText(texteMateriel()); note('Liste de matériel copiée : colle-la dans un courriel ou un document.'); }
+  catch { note('Le navigateur a refusé la copie. Sélectionne la liste à la main.', true); }
+};
 
 function memoriser() {
   historique.push({ etat: montage.etat(), cible, selection });
   if (historique.length > 100) historique.shift();
+  refaire.length = 0;
 }
 
 // ---------------------------------------------------------------------------
@@ -445,10 +572,21 @@ function ouvrirTexte(texte) {
 function annuler() {
   const h = historique.pop();
   if (!h) return;
+  refaire.push({ etat: montage.etat(), cible, selection });
   montage.restaurer(h.etat);
   cible = h.cible; selection = h.selection;
   rafraichir();
-  note('Dernière action annulée.');
+  note('Dernière action annulée. (Rétablir pour la refaire.)');
+}
+
+function retablir() {
+  const h = refaire.pop();
+  if (!h) return;
+  historique.push({ etat: montage.etat(), cible, selection });
+  montage.restaurer(h.etat);
+  cible = h.cible; selection = h.selection;
+  rafraichir();
+  note('Action rétablie.');
 }
 
 function choisirOutil(o) {
@@ -481,6 +619,8 @@ let appui = null;
 $('cv').parentElement.addEventListener('pointerdown', e => {
   if (e.target !== $('cv') || outil !== 'main' || !selection || fermeture) return;
   viser(e);
+  const rc = cercles.viser(lancer);
+  if (rc >= 0) return debutTourne(e, rc);
   const axe = fleches.viser(lancer);
   if (axe < 0) return;
   e.stopPropagation();
@@ -493,6 +633,73 @@ $('cv').parentElement.addEventListener('pointerdown', e => {
   fleches.actif(axe);
   appui = null;
 }, { capture: true });
+
+// --- Rotation avec un cercle -------------------------------------------------
+function debutTourne(e, i) {
+  e.stopPropagation();
+  const centre = cercles.groupe.position.clone(), axe = cercles.axes[i].clone();
+  const plan = new THREE.Plane().setFromNormalAndCoplanarPoint(axe, centre);
+  const p0 = lancer.ray.intersectPlane(plan, new THREE.Vector3());
+  if (!p0 || Math.abs(lancer.ray.direction.dot(axe)) < 0.08) return note('Ce cercle est vu de profil : tourne un peu la vue pour le saisir.', true);
+  memoriser();
+  const ref = p0.sub(centre);
+  const p = montage.piece(selection);
+  tourne = { i, centre, axe, ref, a: 0, id: e.pointerId, piece: p,
+    etat: i < 3 ? montage.debutDeplacement(selection) : null, angle0: p.angle, candidat: null };
+  $('cv').setPointerCapture(e.pointerId);
+  cercles.actif(i);
+  appui = null;
+}
+
+function tourner_(e) {
+  viser(e);
+  const t = tourne;
+  const ang = Cercles.angle(lancer, t.centre, t.axe, t.ref);
+  if (ang === null) return;
+  const a = Math.round(THREE.MathUtils.radToDeg(ang) / pas) * pas;
+  if (a === t.a) return;
+  t.a = a;
+  if (t.etat) {
+    const R = new THREE.Matrix4().makeTranslation(t.centre.x, t.centre.y, t.centre.z)
+      .multiply(new THREE.Matrix4().makeRotationAxis(t.axe, THREE.MathUtils.degToRad(a)))
+      .multiply(new THREE.Matrix4().makeTranslation(-t.centre.x, -t.centre.y, -t.centre.z));
+    montage.deplacerMatrice(t.etat, R);
+    t.candidat = montage.candidatAccrochage(t.etat.ids);
+    montrerAccroche(t.candidat);
+  } else {
+    t.piece.angle = ((t.angle0 + a) % 360 + 360) % 360;
+    montage.placer();
+  }
+  dessinerAnneaux();
+  surligner(selection);
+  const nomAxe = t.i < 3 ? `autour de ${['X', 'la profondeur', 'la verticale'][t.i]}` : 'autour du joint';
+  note(`Rotation ${nomAxe} : ${a > 0 ? '+' : ''}${a}°` + (t.candidat ? ` — lâche ici pour brancher sur ${nomPiece(montage.piece(t.candidat.t.id))}.` : '.'));
+  vue.demander();
+}
+
+function finTourne(annule = false) {
+  const t = tourne;
+  tourne = null;
+  if (t.id !== undefined && $('cv').hasPointerCapture(t.id)) $('cv').releasePointerCapture(t.id);
+  montrerAccroche(null);
+  if (annule || (!t.a && !t.candidat)) {
+    const h = historique.pop();
+    montage.restaurer(h.etat);
+    rafraichir();
+    if (annule) note('Rotation annulée.');
+    return;
+  }
+  if (t.candidat) {
+    const r = montage.accrocher(t.candidat.m, t.candidat.t, t.etat.ids);
+    const ouv = apresModification();
+    rafraichir();
+    if (!ouv) note(`Branché sur ${nomPiece(montage.piece(t.candidat.t.id))}.` + (r.joints.length ? ' Un autre bout est arrivé pile dans un raccord : la boucle est fermée.' : ''));
+    return;
+  }
+  const ouv = apresModification();
+  rafraichir();
+  if (!ouv) note(t.etat ? `Morceau tourné de ${t.a}° ${['autour de X', 'autour de la profondeur', 'autour de la verticale'][t.i]}.` : `Pièce tournée de ${t.a}° autour de son joint.`);
+}
 
 function glisser(e) {
   viser(e);
@@ -542,6 +749,7 @@ function finGlisse(annule = false) {
 $('cv').addEventListener('pointerdown', e => { appui = { x: e.clientX, y: e.clientY }; });
 $('cv').addEventListener('pointerup', e => {
   if (glisse) { finGlisse(); return; }
+  if (tourne) { finTourne(); return; }
   if (!appui || Math.hypot(e.clientX - appui.x, e.clientY - appui.y) > 5) { appui = null; return; }
   appui = null;
   const pt = viser(e);
@@ -556,10 +764,12 @@ $('cv').addEventListener('pointerup', e => {
     const s = ancetre(surAnneau.object, 'sortie').userData.sortie;
     if (fermeture) return clicFermeture(s);
     cible = s; selection = s.id;
-    const tp = montage.ports(montage.piece(s.id))[s.port].taille;
-    if ([...$('selTaille').options].some(o => o.value === tp)) $('selTaille').value = tp;
     rafraichir();
-    note('Sortie choisie. Choisis la pièce à brancher, puis clique « Ajouter ».');
+    tailleSelonCible();
+    choisirOnglet('pieces');
+    if (document.querySelector('.tuile.on.non')) document.querySelector('.tuile:not(.non)')?.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+    const pm = montage.portMonde(montage.piece(s.id), s.port);
+    note(`Sortie choisie (${decrirePort(pm)}). Choisis la pièce à brancher, puis clique « Ajouter ». Les pièces grisées ne s'y branchent pas.`);
     return;
   }
   const plan = vue.renderer.clippingPlanes[0];
@@ -567,18 +777,107 @@ $('cv').addEventListener('pointerup', e => {
     .find(i => !plan || plan.distanceToPoint(i.point) >= 0);
   selection = surPiece ? ancetre(surPiece.object, 'idPiece')?.userData.idPiece ?? null : null;
   rafraichir();
-  if (selection) { const p = montage.piece(selection); note(`${nomPiece(p)} choisi${e_(p)}.`); }
+  if (selection) { const p = montage.piece(selection); choisirOnglet('piece'); note(`${nomPiece(p)} choisi${e_(p)}. Clic droit ou toucher long : translation, rotation et autres actions.`); }
 });
-$('cv').addEventListener('pointercancel', () => { if (glisse) finGlisse(true); });
+$('cv').addEventListener('pointercancel', () => { if (glisse) finGlisse(true); if (tourne) finTourne(true); });
 $('cv').addEventListener('pointermove', e => {
   if (glisse) return glisser(e);
+  if (tourne) return tourner_(e);
   if (outil !== 'mesure' || !mesures.apercu) return;
   const pt = viser(e);
   mesures.survol(pt.x, pt.y);
 });
 
 // ---------------------------------------------------------------------------
+// Menu de la pièce : clic droit, ou toucher long (1/2 s sans bouger)
+
+function pieceSous(x, y) {
+  viser({ clientX: x, clientY: y });
+  const plan = vue.renderer.clippingPlanes[0];
+  const i = lancer.intersectObjects(montage.groupe.children, true).find(i => !plan || plan.distanceToPoint(i.point) >= 0);
+  return i ? ancetre(i.object, 'idPiece')?.userData.idPiece ?? null : null;
+}
+
+function ouvrirMenu(x, y) {
+  if (outil !== 'main' || fermeture) return false;
+  const id = pieceSous(x, y);
+  if (!id) return false;
+  selection = id;
+  rafraichir();
+  const p = montage.piece(id), e = CATALOGUE[p.type];
+  $('menuTitre').textContent = nomPiece(p);
+  const menu = $('menuPiece');
+  menu.querySelector('[data-action="longueur"]').hidden = !e.longueur;
+  const autres = montage.ports(p).length - 1 - [...montage.occupees(p)].filter(i => i !== p.lien?.portEnfant).length;
+  menu.querySelector('[data-action="sortie"]').disabled = !p.lien || autres < 1;
+  menu.querySelector('[data-action="detacher"]').disabled = montage.composante(p.id).size < 2;
+  menu.querySelector('[data-action="translation"]').classList.toggle('on', manip === 'translation' && manipPour === id);
+  menu.querySelector('[data-action="rotation"]').classList.toggle('on', manip === 'rotation' && manipPour === id);
+  menu.hidden = false;
+  const r = $('stage').getBoundingClientRect(), m = menu.getBoundingClientRect();
+  menu.style.left = Math.max(6, Math.min(x - r.left, r.width - m.width - 6)) + 'px';
+  menu.style.top = Math.max(6, Math.min(y - r.top, r.height - m.height - 6)) + 'px';
+  return true;
+}
+const fermerMenu = () => { $('menuPiece').hidden = true; };
+
+$('menuPiece').addEventListener('click', e => {
+  const b = e.target.closest('[data-action]');
+  if (!b || b.disabled) return;
+  fermerMenu();
+  ({
+    translation: () => choisirManip('translation'),
+    rotation: () => choisirManip('rotation'),
+    longueur: () => { choisirOnglet('piece'); $('txtNouvLongueur').focus(); $('txtNouvLongueur').select(); },
+    sortie: changerSortie,
+    detacher,
+    fiche: () => choisirOnglet('piece'),
+    supprimer,
+  })[b.dataset.action]();
+});
+document.addEventListener('pointerdown', e => { if (!$('menuPiece').hidden && !e.target.closest('#menuPiece')) fermerMenu(); }, true);
+
+let droit = null, toucherLong = null;
+$('cv').addEventListener('contextmenu', e => e.preventDefault());
+$('cv').addEventListener('pointerdown', e => {
+  if (e.button === 2) droit = { x: e.clientX, y: e.clientY };
+  if (e.pointerType === 'touch' && !glisse && !tourne) {
+    clearTimeout(toucherLong?.minuterie);
+    toucherLong = { x: e.clientX, y: e.clientY, minuterie: setTimeout(() => {
+      if (ouvrirMenu(toucherLong.x, toucherLong.y)) { appui = null; navigator.vibrate?.(15); }
+      toucherLong = null;
+    }, 550) };
+  }
+});
+$('cv').addEventListener('pointermove', e => {
+  if (toucherLong && Math.hypot(e.clientX - toucherLong.x, e.clientY - toucherLong.y) > 8) { clearTimeout(toucherLong.minuterie); toucherLong = null; }
+});
+const finToucher = () => { if (toucherLong) { clearTimeout(toucherLong.minuterie); toucherLong = null; } };
+$('cv').addEventListener('pointercancel', finToucher);
+$('cv').addEventListener('pointerup', e => {
+  finToucher();
+  if (e.button === 2 && droit) {
+    if (Math.hypot(e.clientX - droit.x, e.clientY - droit.y) <= 5) ouvrirMenu(e.clientX, e.clientY);
+    droit = null;
+  }
+});
+
+// ---------------------------------------------------------------------------
 // Boutons et clavier
+
+const catalogue = creerCatalogue({
+  vue, conteneur: $('catalogue'), select: $('selPiece'),
+  surChoix: () => { majPanneau(); tailleSelonCible(); },
+});
+catalogue.choisir($('selPiece').value, false);
+$('btnTranslation').onclick = () => choisirManip('translation');
+$('btnRotation').onclick = () => choisirManip('rotation');
+$('btnRetablir').onclick = retablir;
+document.querySelectorAll('[data-pas]').forEach(b => b.onclick = () => {
+  pas = Number(b.dataset.pas);
+  document.querySelectorAll('[data-pas]').forEach(x => x.classList.toggle('on', x === b));
+  note(`Pas de rotation : ${pas}°.`);
+});
 
 $('btnPanneau').onclick = () => {
   const replie = document.querySelector('.panel').classList.toggle('replie');
@@ -588,7 +887,7 @@ $('btnAjouter').onclick = ajouter;
 $('btnImporter').onclick = () => $('fichierTube').click();
 $('fichierTube').onchange = e => { const f = e.target.files[0]; e.target.value = ''; if (f) importerTube(f); };
 $('btnFermer').onclick = () => fermeture ? (arreterFermeture(), note('Fermeture de boucle annulée.')) : demarrerFermeture();
-$('selPiece').onchange = majPanneau;
+$('selPiece').onchange = () => catalogue.choisir($('selPiece').value, false);
 $('selTaille').onchange = majPanneau;
 $('btnTournerDe').onclick = () => { const v = Number($('txtAngle').value.replace(',', '.')); if (Number.isFinite(v) && v) tourner(v); };
 document.querySelectorAll('[data-tourner]').forEach(b => b.onclick = () => tourner(Number(b.dataset.tourner)));
@@ -696,11 +995,15 @@ $('btnToutEffacer').onclick = () => {
 
 document.addEventListener('keydown', e => {
   if (e.target.matches('input, select') || $('dlgImage').open) return;
+  if ((e.ctrlKey || e.metaKey) && (e.key.toLowerCase() === 'y' || (e.shiftKey && e.key.toLowerCase() === 'z'))) { e.preventDefault(); retablir(); return; }
   if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z') { e.preventDefault(); annuler(); return; }
   if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's') { e.preventDefault(); enregistrer(); return; }
   if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'o') { e.preventDefault(); $('fichierMontage').click(); return; }
   if (e.key === 'Escape') {
+    if (!$('menuPiece').hidden) { fermerMenu(); return; }
     if (glisse) { finGlisse(true); return; }
+    if (tourne) { finTourne(true); return; }
+    if (manip) { manip = null; placerFleches(); vue.demander(); return; }
     if (fermeture) { arreterFermeture(); note('Fermeture de boucle annulée.'); return; }
     if (mesures.apercu) { mesures.annulerApercu(); note('Mesure annulée.'); }
     else { selection = null; rafraichir(); }
@@ -709,8 +1012,10 @@ document.addEventListener('keydown', e => {
   if (e.key.toLowerCase() === 'm') choisirOutil('mesure');
   if (e.key.toLowerCase() === 'o' && !e.ctrlKey && !e.metaKey) basculerOrtho();
   if (e.key.toLowerCase() === 's') choisirOutil('main');
+  if (e.key.toLowerCase() === 'g') choisirManip('translation');
+  if (e.key.toLowerCase() === 'r') choisirManip('rotation');
 });
 
 rafraichir();
 $('chargement').hidden = true;
-window.__conduits = { fleches, changerLongueur, ouvrirTexte, importerTexte: t => importerTube({ text: async () => t }), vue, montage, mesures, THREE, ajouter, choisirOutil, tourner, $, detacher, deplacer: (id, axe, d) => { selection = id; rafraichir(); const etat = montage.debutDeplacement(id); memoriser(); glisse = { axe, etat, d, candidat: null }; montage.deplacer(etat, AXES[axe].dir.clone().multiplyScalar(d)); glisse.candidat = montage.candidatAccrochage(etat.ids); finGlisse(); }, selectionner: id => { selection = id; rafraichir(); }, choisirSortie: (id, port) => { cible = { id, port }; rafraichir(); }, fermer: (a, b) => { demarrerFermeture(); clicFermeture(a); clicFermeture(b); } };
+window.__conduits = { cercles, choisirManip, choisirOnglet, retablir, annuler, ouvrirMenu, materiel, catalogue, fleches, changerLongueur, ouvrirTexte, importerTexte: t => importerTube({ text: async () => t }), vue, montage, mesures, THREE, ajouter, choisirOutil, tourner, $, detacher, deplacer: (id, axe, d) => { selection = id; rafraichir(); const etat = montage.debutDeplacement(id); memoriser(); glisse = { axe, etat, d, candidat: null }; montage.deplacer(etat, AXES[axe].dir.clone().multiplyScalar(d)); glisse.candidat = montage.candidatAccrochage(etat.ids); finGlisse(); }, selectionner: id => { selection = id; rafraichir(); }, choisirSortie: (id, port) => { cible = { id, port }; rafraichir(); }, fermer: (a, b) => { demarrerFermeture(); clicFermeture(a); clicFermeture(b); } };

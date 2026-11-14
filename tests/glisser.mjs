@@ -6,7 +6,7 @@ await page.goto('file:///home/claude/conduits3d/index.html');
 await page.waitForFunction(() => window.__conduits);
 await page.evaluate(() => { const C = window.__conduits, $ = C.$;
   const aj = (type, taille, L) => { $('selPiece').value = type; $('selPiece').onchange(); $('selTaille').value = taille; if (L) $('txtLongueur').value = L; C.ajouter(); };
-  aj('coude90','1/2'); aj('mamelon','1/2','4'); aj('coude90','1/2'); C.selectionner(3); C.detacher(); C.vue.cadrer(C.montage.groupe); });
+  aj('coude90','1/2'); aj('mamelon','1/2','4'); aj('coude90','1/2'); C.selectionner(3); C.detacher(); C.choisirManip('translation'); C.vue.cadrer(C.montage.groupe); });
 await page.waitForTimeout(300);
 const ecran = () => page.evaluate(() => { const C = window.__conduits, f = C.fleches, T = C.THREE;
   const cv = C.vue.renderer.domElement.getBoundingClientRect();
