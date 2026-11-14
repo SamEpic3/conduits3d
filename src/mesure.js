@@ -66,7 +66,7 @@ export class Mesures {
       this.point(m.a, c, 0.03); this.point(m.b, c, 0.03);
     }
     if (afficherReperes) for (const r of this.reperes)
-      this.point(r.p, r.genre === 'centre' ? 0x7b3fb5 : 0x56606a, r.genre === 'centre' ? 0.035 : 0.028, false);
+      this.point(r.p, r.genre === 'centre' ? 0x7b3fb5 : r.genre === 'fond' ? 0x1e9a55 : 0x56606a, r.genre === 'centre' ? 0.035 : 0.028, r.genre === 'fond');
     this.vue.demander();
   }
 

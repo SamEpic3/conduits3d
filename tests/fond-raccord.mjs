@@ -1,0 +1,21 @@
+// Points « fond » (vert) des sorties femelles libres et bouton Effacer de la barre de mesure.
+import { chromium } from 'playwright';
+const nav = await chromium.launch({ executablePath: '/usr/bin/google-chrome', args: ['--use-angle=swiftshader','--enable-unsafe-swiftshader'] });
+const page = await nav.newPage({ viewport: { width: 1200, height: 800 } });
+page.setDefaultTimeout(150000);
+const err = []; page.on('pageerror', e => err.push(e.message));
+await page.addInitScript(() => localStorage.setItem('conduits3d-vignettes-2', '{}'));
+await page.goto('file:///home/claude/conduits3d/index.html');
+await page.waitForFunction(() => window.__conduits);
+const r = await page.evaluate(() => { const C = window.__conduits, m = C.montage, $ = C.$;
+  $('selPiece').value = 'tb-sae-m'; $('selPiece').onchange(); $('selTaille').value = '3/8'; $('selTailleB').value = '1/4'; C.ajouter();
+  const p = m.pieces[0], i = m.ports(p).findIndex(x => x.type === 'tube-f');
+  const pm = m.portMonde(p, i), fond = m.pointsReperes().find(x => x.genre === 'fond');
+  C.selectionner(p.id); C.choisirOnglet('piece');
+  C.choisirSortie(p.id, i);
+  return { eng: m.engagementPort(pm), dist: fond && fond.p.distanceTo(pm.position), fiche: $('fiche').textContent.replace(/\s+/g, ' ').slice(0, 300) };
+});
+await page.click('[data-outil="mesure"]');
+await page.screenshot({ path: '/tmp/t/fond.png' });
+console.log(JSON.stringify(r), err.join('\n') || 'ok');
+await nav.close();

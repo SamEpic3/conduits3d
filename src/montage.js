@@ -604,7 +604,10 @@ export class Montage {
     if (e.axial < -t.axial) raisons.push(`trop court de ${po(-e.axial)}`);
     if (e.lateral > t.lateral) raisons.push(`décalé de ${po(e.lateral)} sur le côté`);
     if (e.angle > t.angle) raisons.push(`désaligné de ${e.angle.toFixed(1).replace('.', ',')}°`);
-    return `Le bout n'arrive pas dans le raccord, même en tournant la pièce : ${raisons.join(', ')}. (Tolérance : 1/16 po et 2°.)`;
+    const conseil = Math.abs(e.axial) > t.axial && e.lateral <= t.lateral && e.angle <= t.angle
+      ? ` Les coudes sont bons : seul le dernier bout droit est ${e.axial > 0 ? 'trop long' : 'trop court'}. Dans la cintreuse, refais le tube ${e.axial > 0 ? 'plus court' : 'plus long'} de ${po(Math.abs(e.axial))}, avec les mêmes coudes.`
+      : '';
+    return `Le bout n'arrive pas dans le raccord, même en tournant la pièce : ${raisons.join(', ')}. (Tolérance : 1/16 po et 2°.)${conseil}`;
   }
 
   // Après une modification : les boucles suivent (la longueur s'ajuste) ou s'ouvrent si les sorties
@@ -640,6 +643,12 @@ export class Montage {
   }
 
   // Points repères pour la mesure : centre de chaque raccord, faces et bouts de tuyau.
+  // Profondeur dont le tuyau ou le tube entre dans cette sortie femelle (de la face jusqu'au bout du tube).
+  engagementPort(pm) {
+    if (pm.engagement != null) return pm.engagement;
+    return pm.type.startsWith('tube') ? 0 : engagementJoint(pm.type, pm.taille);
+  }
+
   pointsReperes() {
     const pts = [];
     for (const p of this.pieces) {
@@ -648,6 +657,15 @@ export class Montage {
       this.ports(p).forEach((_, i) => {
         const pm = this.portMonde(p, i);
         pts.push({ p: pm.position, genre: pm.type.endsWith('-m') ? 'bout' : 'face', cle: `${p.id}:${i}` });
+      });
+      // Fond d'une sortie femelle libre : là où arrivera le bout du tuyau ou du tube (face moins l'engagement).
+      const occ = this.occupees(p);
+      this.ports(p).forEach((_, i) => {
+        if (occ.has(i)) return;
+        const pm = this.portMonde(p, i);
+        if (pm.type.endsWith('-m')) return;
+        const eng = this.engagementPort(pm);
+        if (eng > 0) pts.push({ p: pm.position.clone().addScaledVector(pm.sortie, -eng), genre: 'fond', cle: `${p.id}:${i}f` });
       });
     }
     return pts;

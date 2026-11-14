@@ -293,6 +293,8 @@ label.check{display:flex;gap:8px;align-items:center;color:var(--fg);font-size:14
     <button data-mode="x" title="Écart selon X (largeur)"><svg class="ic" aria-hidden="true"><use href="#i-axeX"/></svg> X</button>
     <button data-mode="y" title="Écart selon Y (hauteur)"><svg class="ic" aria-hidden="true"><use href="#i-axeY"/></svg> Y</button>
     <button data-mode="z" title="Écart selon Z (profondeur)"><svg class="ic" aria-hidden="true"><use href="#i-axeZ"/></svg> Z</button>
+    <span class="sep"></span>
+    <button id="btnEffMesuresBarre" title="Effacer toutes les mesures"><svg class="ic" aria-hidden="true"><use href="#i-poubelle"/></svg><span class="txt"> Effacer</span></button>
   </div>
   <div class="toolbar" id="barreRot" aria-label="Pas de rotation" hidden>
     <span class="etiq">Pas</span>
@@ -407,7 +409,7 @@ label.check{display:flex;gap:8px;align-items:center;color:var(--fg);font-size:14
 
     <section data-panneau="mesures" hidden>
       <ol id="listeMesures"></ol>
-      <p class="muted" id="mesVide">Outil Mesure : clique deux points repères (centre d'un raccord en violet, face ou bout de tuyau en gris).</p>
+      <p class="muted" id="mesVide">Outil Mesure : clique deux points repères — centre d'un raccord (violet), face ou bout de tuyau (gris), fond d'une sortie libre (vert : là où arrivera le bout du tuyau ou du tube).</p>
       <button id="btnEffMesures" disabled>Effacer les mesures</button>
     </section>
     </div>

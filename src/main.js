@@ -75,6 +75,7 @@ function lireLongueur(txt) {
 function decrirePort(pm) {
   const [fam, genre] = pm.type.split('-');
   const t = `${pm.taille} po`;
+  if (fam === 'tube' && genre === 'f') return `raccord de tube ${t} : le tube entre de ${po3(montage.engagementPort(pm))} po`;
   if (fam === 'npt') return genre === 'f' ? `filet femelle NPT ${t}` : `filet mâle NPT ${t}`;
   if (fam === 'cu') return genre === 'f' ? `douille de cuivre ${t}, reçoit un tube` : `bout de tube de cuivre ${t}`;
   return genre === 'f' ? `raccord de tube ${t}` : `bout de tube ${t}`;
@@ -271,6 +272,9 @@ function majPanneau() {
     const par = p.lien && montage.piece(p.lien.parent);
     const lignes = e.fiche(p.taille, p.longueur, p.tailleB, p);
     if (e.famille === 'npt') lignes.push(['Engagement des filets', FILETS_NPT[p.taille].engagement]);
+    // Raccords de tube : de combien le tube entre (de la face de l'écrou jusqu'au bout du tube).
+    const engTube = [...new Set(montage.ports(p).filter(x => x.type === 'tube-f').map(x => +montage.engagementPort(x).toFixed(4)))];
+    for (const v of engTube) lignes.push(['Le tube entre de', v]);
     $('fiche').innerHTML = `
       <h2>${nomPiece(p)}</h2>
       <p class="muted">${e.nomAnglais} · ${e.matiere}</p>
@@ -296,6 +300,7 @@ function majPanneau() {
   $('listeMesures').innerHTML = mesures.liste.map(m => `<li>${NOMS_MODES[m.mode]} : ${fmtPo(longueurMesure(m))}</li>`).join('');
   $('mesVide').hidden = mesures.liste.length > 0;
   $('btnEffMesures').disabled = !mesures.liste.length;
+  $('btnEffMesuresBarre').disabled = !mesures.liste.length;
   $('btnAnnuler').disabled = !historique.length;
   $('btnRetablir').disabled = !refaire.length;
   majMateriel();
@@ -611,7 +616,7 @@ function choisirOutil(o) {
   if (o !== 'mesure') mesures.apercu = null;
   rafraichir();
   note(o === 'mesure'
-    ? 'Mesure : clique deux points repères. Violet = centre d\'un raccord ; gris = face d\'un raccord ou bout de tuyau.'
+    ? 'Mesure : clique deux points repères. Violet = centre d\'un raccord ; gris = face d\'un raccord ou bout de tuyau ; vert = fond d\'une sortie libre (où arrivera le bout du tube). Mesure de vert à vert pour savoir où doit arriver un tube.'
     : 'Sélection : clique une sortie (anneau) pour y brancher la prochaine pièce, ou une pièce pour la tourner, la déplacer avec les flèches ou la supprimer.');
 }
 
@@ -1178,6 +1183,7 @@ $('btnTelecharger').onclick = e => {
   }, 'image/png');
 };
 $('btnEffMesures').onclick = () => { mesures.effacer(); rafraichir(); note('Mesures effacées.'); };
+$('btnEffMesuresBarre').onclick = () => $('btnEffMesures').click();
 $('btnToutEffacer').onclick = () => {
   if (!montage.pieces.length) return;
   memoriser();
