@@ -411,14 +411,14 @@ function ajouter() {
 function demarrerFermeture() {
   if (outil !== 'main') choisirOutil('main');
   fermeture = { premiere: null };
-  $('btnFermer').classList.add('primary');
+  $('btnFermer').classList.add('on');
   rafraichir();
   note('Fermer une boucle : clique deux raccords face à face (l\'app ajoute le tuyau ou le tube), ou le bout libre d\'un tube puis le raccord où il doit entrer. Échap pour annuler.');
 }
 
 function arreterFermeture() {
   fermeture = null;
-  $('btnFermer').classList.remove('primary');
+  $('btnFermer').classList.remove('on');
   rafraichir();
 }
 
@@ -603,7 +603,7 @@ function retablir() {
 }
 
 function choisirOutil(o) {
-  if (o !== 'main' && fermeture) { fermeture = null; $('btnFermer').classList.remove('primary'); }
+  if (o !== 'main' && fermeture) { fermeture = null; $('btnFermer').classList.remove('on'); }
   outil = o;
   document.querySelectorAll('[data-outil]').forEach(b => b.classList.toggle('on', b.dataset.outil === o));
   $('modes').hidden = o !== 'mesure';
@@ -976,11 +976,31 @@ document.querySelectorAll('[data-mode]').forEach(b => b.onclick = () => {
   mesures.dessiner(outil === 'mesure');
 });
 document.querySelectorAll('[data-vue]').forEach(b => b.onclick = () => vue.vue(b.dataset.vue, montage.groupe));
+$('btnToutVoir').onclick = () => vue.cadrer(montage.groupe);
+
+// Menus de la barre d'outils (Fichier, Vue) : sous leur bouton ; un choix ou un clic ailleurs les ferme.
+function fermerMenusBarre() {
+  document.querySelectorAll('.menu-barre').forEach(m => { m.hidden = true; });
+  document.querySelectorAll('[data-menu]').forEach(b => { b.classList.remove('ouvert'); b.setAttribute('aria-expanded', 'false'); });
+}
+document.querySelectorAll('[data-menu]').forEach(b => b.onclick = () => {
+  const menu = $(b.dataset.menu), ouvert = !menu.hidden;
+  fermerMenusBarre();
+  if (ouvert) return;
+  menu.hidden = false;
+  b.classList.add('ouvert'); b.setAttribute('aria-expanded', 'true');
+  const r = b.getBoundingClientRect(), st = $('stage').getBoundingClientRect(), m = menu.getBoundingClientRect();
+  menu.style.left = Math.max(6, Math.min(r.left - st.left, st.width - m.width - 6)) + 'px';
+  menu.style.top = (r.bottom - st.top + 6) + 'px';
+});
+document.querySelectorAll('.menu-barre').forEach(m => m.addEventListener('click', e => { if (e.target.closest('button')) fermerMenusBarre(); }));
+document.addEventListener('pointerdown', e => { if (!e.target.closest('.menu-barre, [data-menu]')) fermerMenusBarre(); }, true);
 let coupe = false;
 $('btnCoupe').onclick = () => { coupe = !coupe; vue.coupe(coupe); $('btnCoupe').classList.toggle('on', coupe); };
 function basculerOrtho() {
   vue.projection(!vue.orthogonale);
-  $('btnOrtho').classList.toggle('on', vue.orthogonale);
+  $('btnOrtho').classList.toggle('coche', vue.orthogonale);
+  $('btnOrtho').setAttribute('aria-checked', String(vue.orthogonale));
   placerFleches();
   note(vue.orthogonale ? 'Vue orthogonale : sans perspective, les lignes parallèles restent parallèles (comme un dessin technique).' : 'Vue en perspective.');
 }
@@ -1069,6 +1089,7 @@ document.addEventListener('keydown', e => {
   if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'o') { e.preventDefault(); $('fichierMontage').click(); return; }
   if (e.key === 'Escape') {
     if (!$('menuPiece').hidden) { fermerMenu(); return; }
+    if (document.querySelector('.menu-barre:not([hidden])')) { fermerMenusBarre(); return; }
     if (glisse) { finGlisse(true); return; }
     if (tourne) { finTourne(true); return; }
     if (manip) { manip = null; placerFleches(); vue.demander(); return; }
@@ -1081,6 +1102,7 @@ document.addEventListener('keydown', e => {
   if (e.key.toLowerCase() === 'o' && !e.ctrlKey && !e.metaKey) basculerOrtho();
   if (e.key.toLowerCase() === 's') choisirOutil('main');
   if (e.key.toLowerCase() === 'g') choisirManip('translation');
+  if (e.key.toLowerCase() === 'b') $('btnFermer').click();
   if (e.key.toLowerCase() === 'r') choisirManip('rotation');
 });
 

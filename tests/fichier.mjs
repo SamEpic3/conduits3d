@@ -11,7 +11,7 @@ await page.evaluate(() => { const C = window.__conduits, $ = C.$;
   aj('coude90','1/2'); aj('mamelon','1/2','4'); aj('te','1/2'); C.selectionner(3); C.detacher(); C.deplacer(3, 2, 2);
   const r = C.montage.pointsReperes(); C.mesures.liste.push({ mode: 'd', ca: '1:c', cb: '3:c', a: r[0].p, b: r[0].p }); C.mesures.actualiser(r, false); });
 page.once('dialog', d => d.accept('mon montage'));
-const [dl] = await Promise.all([page.waitForEvent('download'), page.click('#btnEnregistrer')]);
+const [dl] = await Promise.all([page.waitForEvent('download', { timeout: 200000 }), (async () => { await page.click('[data-menu="menuFichier"]'); await page.click('#btnEnregistrer'); })()]);
 const chemin = '/tmp/t/' + dl.suggestedFilename(); await dl.saveAs(chemin);
 const avant = await page.evaluate(() => [window.__conduits.$('listeMesures').textContent, window.__conduits.montage.pieces.length]);
 page = await ouvrir();

@@ -37,18 +37,18 @@ Sur téléphone : outils en haut (icônes), panneau en tiroir au bas en portrait
    d'autant ; s'il n'y en a pas (ou s'il deviendrait trop court), l'app refuse et explique pourquoi.
 6. **Mesure** (M) : clique deux points repères — centre d'un raccord (violet), face d'un raccord ou bout de tuyau (gris) —
    en distance directe ou en écart X, Y ou Z. Les mesures suivent le montage quand on le modifie.
-7. **Fermer une boucle** :
+7. **Boucle** (B, barre d'outils) — fermer une boucle :
    - deux raccords face à face : l'app y met le tuyau ou le tube de la bonne longueur (distance entre les faces + les deux engagements) ;
    - le bout libre d'un tube (ex. : tube cintré importé) puis un raccord : l'app cherche la rotation du tube autour de son joint
      qui l'aligne, et accepte si le bout arrive au bon endroit (tolérance 1/16 po et 2°), sinon elle dit de combien il est trop
      long, trop court, décalé ou désaligné. En fileté NPT, il faut une union (on ne visse pas les deux bouts d'un tuyau).
    Si on tourne une pièce ensuite, la boucle s'ouvre (avec un avertissement).
-8. **Importer un tube cintré** : dans la cintreuse 3D, onglet Relevé → « Exporter le tube (.json) » ; ici, choisis la sortie
+8. **Fichier ☰ → Importer un tube cintré** : dans la cintreuse 3D, onglet Relevé → « Exporter le tube (.json) » ; ici, choisis la sortie
    (et la grosseur 5/16 ou 3/8), puis « Importer un tube cintré ». Le tube garde ses coudes (rayon 15/16 po).
-9. **Enregistrer** (Ctrl+S) télécharge le montage et ses mesures dans un fichier `.json` ; **Ouvrir** (Ctrl+O) le recharge
+9. **Fichier ☰** : Nouveau montage, Ouvrir, **Enregistrer** (Ctrl+S) télécharge le montage et ses mesures dans un fichier `.json` ; **Ouvrir** (Ctrl+O) le recharge
    (Annuler revient au montage d'avant). Sur iPhone, le fichier va dans l'app Fichiers.
-10. **Ortho** (O) bascule entre la perspective et la vue orthogonale (sans perspective, comme un dessin technique).
-11. **Image** exporte un PNG : vue (actuelle, 3D, face, dessus, côté), projection, format, mesures ou non, coupe ou non,
+10. **Vue 👁** : 3D, Face, Dessus, Côté, Tout voir ; **Orthogonale** (O) bascule entre la perspective et la vue orthogonale (sans perspective, comme un dessin technique).
+11. **Fichier ☰ → Exporter une image** : un PNG : vue (actuelle, 3D, face, dessus, côté), projection, format, mesures ou non, coupe ou non,
     fond blanc ou transparent. Les anneaux des sorties, les flèches et la surbrillance n'y sont jamais.
 12. **Coupe** montre l'intérieur ; **Annuler** (Ctrl+Z) revient en arrière, **Rétablir** (Ctrl+Y) refait.
 13. Onglet **Matériel** : les pièces comptées par sorte et grosseur, avec chaque longueur de coupe ; « Copier la liste ».
