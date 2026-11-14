@@ -405,7 +405,7 @@ function ajouter() {
   vue.cadrer(montage.groupe);
   note(premier
     ? `${nomPiece(p)} placé${e_(p)}. Les anneaux orange sont les sorties libres ; la bleue est choisie pour la prochaine pièce.`
-    : `${nomPiece(p)} ajouté${e_(p)}. Pas la bonne ? Annuler (↶). Pour l'orienter : clic droit ou toucher long, puis Rotation.`);
+    : `${nomPiece(p)} ajouté${e_(p)}. Pas la bonne ? Annuler. Pour l'orienter : clic droit ou toucher long, puis Rotation.`);
 }
 
 function demarrerFermeture() {
@@ -472,7 +472,7 @@ async function importerTube(fichier) {
   cible = sortieLibre(r.id);
   rafraichir();
   vue.cadrer(montage.groupe);
-  note(`Tube cintré ${taille} po importé : ${d.coudes.length} coude${d.coudes.length > 1 ? 's' : ''}, longueur développée ${fmtPo(d.longueur)}.${premier ? '' : ' Tourne-le autour du joint au besoin avec ↺ ↻.'}`);
+  note(`Tube cintré ${taille} po importé : ${d.coudes.length} coude${d.coudes.length > 1 ? 's' : ''}, longueur développée ${fmtPo(d.longueur)}.${premier ? '' : ' Pour l\'orienter : clic droit ou toucher long, puis Rotation (cercle cuivre).'}`);
 }
 
 function tourner(deg) {
@@ -996,7 +996,11 @@ document.querySelectorAll('[data-menu]').forEach(b => b.onclick = () => {
 document.querySelectorAll('.menu-barre').forEach(m => m.addEventListener('click', e => { if (e.target.closest('button')) fermerMenusBarre(); }));
 document.addEventListener('pointerdown', e => { if (!e.target.closest('.menu-barre, [data-menu]')) fermerMenusBarre(); }, true);
 let coupe = false;
-$('btnCoupe').onclick = () => { coupe = !coupe; vue.coupe(coupe); $('btnCoupe').classList.toggle('on', coupe); };
+$('btnCoupe').onclick = () => {
+  coupe = !coupe; vue.coupe(coupe);
+  $('btnCoupe').classList.toggle('coche', coupe); $('btnCoupe').setAttribute('aria-checked', String(coupe));
+  note(coupe ? 'Vue en coupe : la moitié avant est enlevée pour voir l\'intérieur (engagement des filets, douilles).' : 'Vue en coupe désactivée.');
+};
 function basculerOrtho() {
   vue.projection(!vue.orthogonale);
   $('btnOrtho').classList.toggle('coche', vue.orthogonale);
@@ -1103,6 +1107,7 @@ document.addEventListener('keydown', e => {
   if (e.key.toLowerCase() === 's') choisirOutil('main');
   if (e.key.toLowerCase() === 'g') choisirManip('translation');
   if (e.key.toLowerCase() === 'b') $('btnFermer').click();
+  if (e.key.toLowerCase() === 'c' && !e.ctrlKey && !e.metaKey) $('btnCoupe').click();
   if (e.key.toLowerCase() === 'r') choisirManip('rotation');
 });
 

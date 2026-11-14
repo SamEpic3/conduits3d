@@ -12,8 +12,8 @@ for (const [nom, vp] of [['bureau', { viewport: { width: 1200, height: 800 } }],
   await page.screenshot({ path: `/tmp/t/menu-fichier-${nom}.png` });
   await page.click('[data-menu="menuVue"]'); await page.waitForTimeout(150);
   await page.screenshot({ path: `/tmp/t/menu-vue-${nom}.png` });
-  await page.click('#btnOrtho');
-  const r = await page.evaluate(() => [window.__conduits.vue.orthogonale, document.getElementById('menuVue').hidden]);
+  await page.click('#btnOrtho'); await page.click('[data-menu="menuVue"]'); await page.click('#btnCoupe');
+  const r = await page.evaluate(() => [window.__conduits.vue.orthogonale, document.getElementById('menuVue').hidden, window.__conduits.vue.renderer.clippingPlanes.length]);
   await page.click('#btnFermer');
   const f = await page.evaluate(() => document.getElementById('btnFermer').classList.contains('on'));
   console.log(nom, r, f);

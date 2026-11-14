@@ -50,7 +50,7 @@ Sur téléphone : outils en haut (icônes), panneau en tiroir au bas en portrait
 10. **Vue 👁** : 3D, Face, Dessus, Côté, Tout voir ; **Orthogonale** (O) bascule entre la perspective et la vue orthogonale (sans perspective, comme un dessin technique).
 11. **Fichier ☰ → Exporter une image** : un PNG : vue (actuelle, 3D, face, dessus, côté), projection, format, mesures ou non, coupe ou non,
     fond blanc ou transparent. Les anneaux des sorties, les flèches et la surbrillance n'y sont jamais.
-12. **Coupe** montre l'intérieur ; **Annuler** (Ctrl+Z) revient en arrière, **Rétablir** (Ctrl+Y) refait.
+12. **Vue 👁 → Vue en coupe** (C) montre l'intérieur ; **Annuler** (Ctrl+Z) revient en arrière, **Rétablir** (Ctrl+Y) refait.
 13. Onglet **Matériel** : les pièces comptées par sorte et grosseur, avec chaque longueur de coupe ; « Copier la liste ».
 
 ## Fichiers
