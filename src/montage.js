@@ -550,8 +550,9 @@ export class Montage {
   }
 
   static TOLERANCE = { axial: 1 / 16, lateral: 1 / 16, angle: 2 };
-  // Raccords de tube : le tube peut entrer plus ou moins loin (1/4 po) ; on corrige ensuite sa longueur.
-  static TOLERANCE_TUBE = { axial: 1 / 4, lateral: 1 / 16, angle: 2 };
+  // Raccords de tube : le tube peut entrer plus ou moins loin (1/4 po) et se forcer un peu de côté (1/8 po) ;
+  // on corrige ensuite sa longueur et on le « force » pour qu'il arrive pile dans le raccord.
+  static TOLERANCE_TUBE = { axial: 1 / 4, lateral: 1 / 8, angle: 2 };
   static tolerance(famille) { return famille === 'tube' ? Montage.TOLERANCE_TUBE : Montage.TOLERANCE; }
   static dansTolerance(e, famille) {
     const t = Montage.tolerance(famille);
@@ -560,6 +561,25 @@ export class Montage {
 
   // Tube cintré joint dans la tolérance : on allonge ou raccourcit son bout droit pour qu'il arrive
   // pile au fond du raccord (visuel juste, longueur développée corrigée). Renvoie la correction (po).
+  // Après la correction de longueur : décalage de côté qui reste → le tube se force (ressort) d'autant.
+  forcerTube(p, port, F) {
+    if (!p.cintrage) return 0;
+    const M = this.portMonde(p, port);
+    const eng = F.engagement ?? 0;
+    const attendu = F.position.clone().addScaledVector(F.sortie, -eng), entree = F.sortie.clone().negate();
+    const e = attendu.sub(M.position);
+    e.addScaledVector(entree, -e.dot(entree));             // seulement la part de côté
+    if (e.length() < 1e-4) return 0;
+    const qInv = new THREE.Quaternion().setFromRotationMatrix(this.objet(p).matrix).invert();
+    const v = e.clone().applyQuaternion(qInv);
+    const r = p.cintrage.ressort?.fin === port ? new THREE.Vector3(...p.cintrage.ressort.v) : new THREE.Vector3();
+    r.add(v);
+    p.cintrage.ressort = { fin: port, v: r.toArray().map(x => +x.toFixed(5)) };
+    this.refaireObjet(p);
+    this.placer();
+    return r.length();
+  }
+
   ajusterBoutTube(p, port, axial) {
     if (!p.cintrage || Math.abs(axial) < 1e-4) return 0;
     const c = p.cintrage;
@@ -609,8 +629,9 @@ export class Montage {
     pm.fermeture = { id: f.id, port: f.port, portEnfant: m.port, joint: true };
     this.placer();
     const correction = famille === 'tube' ? this.ajusterBoutTube(pm, m.port, e.axial) : 0;
+    const force = famille === 'tube' && e.lateral > 1e-3 ? this.forcerTube(pm, m.port, this.portMonde(this.piece(f.id), f.port)) : 0;
     let rot = ((meilleur.angle - angle0) % 360 + 540) % 360 - 180;
-    return { id: pm.id, joint: true, ecart: correction ? ecart() : e, correction, rotation: Math.abs(rot) > 0.01 ? rot : 0 };
+    return { id: pm.id, joint: true, ecart: correction || force ? ecart() : e, ecartInitial: e, correction, force, rotation: Math.abs(rot) > 0.01 ? rot : 0 };
   }
 
   estDescendant(id, ancetre) {
@@ -630,7 +651,7 @@ export class Montage {
     const conseil = Math.abs(e.axial) > t.axial && e.lateral <= t.lateral && e.angle <= t.angle
       ? ` Les coudes sont bons : seul le dernier bout droit est ${e.axial > 0 ? 'trop long' : 'trop court'}. Dans la cintreuse, refais le tube ${e.axial > 0 ? 'plus court' : 'plus long'} de ${po(Math.abs(e.axial))}, avec les mêmes coudes.`
       : '';
-    return `Le bout n'arrive pas dans le raccord, même en tournant la pièce : ${raisons.join(', ')}. (Tolérance : ${famille === 'tube' ? '1/4 po en profondeur, 1/16 po sur le côté' : '1/16 po'} et 2°.)${conseil}`;
+    return `Le bout n'arrive pas dans le raccord, même en tournant la pièce : ${raisons.join(', ')}. (Tolérance : ${famille === 'tube' ? '1/4 po en profondeur, 1/8 po sur le côté' : '1/16 po'} et 2°.)${conseil}`;
   }
 
   // Après une modification : les boucles suivent (la longueur s'ajuste) ou s'ouvrent si les sorties
@@ -645,7 +666,10 @@ export class Montage {
         const e = this.ecartJoint(M, this.portMonde(this.piece(p.fermeture.id), p.fermeture.port));
         const fam = M.type.split('-')[0];
         if (!Montage.dansTolerance(e, fam)) { delete p.fermeture; ouvertes.push(p.id); }
-        else if (fam === 'tube' && Math.abs(e.axial) > 0.002) this.ajusterBoutTube(p, p.fermeture.portEnfant, e.axial);
+        else if (fam === 'tube') {
+          if (Math.abs(e.axial) > 0.002) this.ajusterBoutTube(p, p.fermeture.portEnfant, e.axial);
+          if (e.lateral > 0.002) this.forcerTube(p, p.fermeture.portEnfant, this.portMonde(this.piece(p.fermeture.id), p.fermeture.port));
+        }
         continue;
       }
       if (!p.lien) continue;

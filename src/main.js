@@ -449,7 +449,9 @@ function clicFermeture(s) {
   const p = montage.piece(r.id);
   if (r.joint) {
     const e = r.ecart, po = v => `${Math.abs(v).toFixed(3).replace('.', ',')} po`;
-    return note(`Boucle fermée : le bout arrive dans le raccord (écart ${po(e.axial)} en profondeur, ${po(e.lateral)} sur le côté, ${e.angle.toFixed(1).replace('.', ',')}°).`
+    const e0 = r.ecartInitial || e;
+    return note(`Boucle fermée : le bout arrive dans le raccord (écart ${po(e0.axial)} en profondeur, ${po(e0.lateral)} sur le côté, ${e0.angle.toFixed(1).replace('.', ',')}°).`
+      + (r.force ? ` Le tube a été forcé de ${po(r.force)} sur le côté pour entrer dans le raccord (un tube recuit plie un peu, comme en atelier).` : '')
       + (r.rotation ? ` La pièce a été tournée de ${r.rotation.toFixed(1).replace('.', ',')}° autour de son joint pour s'aligner.` : '')
       + (r.correction ? ` Le tube a été ${r.correction > 0 ? 'allongé' : 'raccourci'} de ${po(r.correction)} pour arriver au fond du raccord : longueur développée ${fmtPo(p.cintrage.longueur)}.` : ''));
   }

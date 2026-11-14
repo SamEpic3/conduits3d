@@ -10,7 +10,7 @@ import { filetDroitComplet, rayonsFiletDroit } from 'app/geometrie/filets.js';
 import { placer, port, prisme } from 'app/geometrie/formes.js';
 import { boutFemelle, boutMale } from 'app/pieces/npt.js';
 import { MATERIAUX } from 'app/materiaux.js';
-import { repereA, surfaceCintree, bout } from 'app/geometrie/cintrage.js';
+import { repereA, surfaceCintree, bout, decalageRessort } from 'app/geometrie/cintrage.js';
 
 const V = (x, y, z) => new THREE.Vector3(x, y, z);
 const SEG = 56;
@@ -171,14 +171,15 @@ export function tube(t, longueur) {
 // Tube cintré importé de la cintreuse 3D : piece.cintrage = { longueur, rayon, coudes }.
 // Le bout A est à l'origine ; le tube part vers +Z.
 export function tubeCintre(t, _l, _tb, piece) {
-  const { longueur: L, rayon: Rc, coudes } = piece.cintrage;
+  const { longueur: L, rayon: Rc, coudes, ressort } = piece.cintrage;
   const d = TUBE[t], R = d.D / 2, r = R - d.paroi;
   const g = new THREE.Group();
-  g.add(new THREE.Mesh(surfaceCintree(coudes, L, Rc, R), MATERIAUX.cuivre));
-  g.add(new THREE.Mesh(surfaceCintree(coudes, L, Rc, r, true), MATERIAUX.cuivre));
-  g.add(new THREE.Mesh(bout(coudes, 0, Rc, R, r), MATERIAUX.cuivre));
-  g.add(new THREE.Mesh(bout(coudes, L, Rc, R, r), MATERIAUX.cuivre));
+  g.add(new THREE.Mesh(surfaceCintree(coudes, L, Rc, R, false, 40, ressort), MATERIAUX.cuivre));
+  g.add(new THREE.Mesh(surfaceCintree(coudes, L, Rc, r, true, 40, ressort), MATERIAUX.cuivre));
+  g.add(new THREE.Mesh(bout(coudes, 0, Rc, R, r, 40, ressort, L), MATERIAUX.cuivre));
+  g.add(new THREE.Mesh(bout(coudes, L, Rc, R, r, 40, ressort, L), MATERIAUX.cuivre));
   const a = repereA(coudes, 0, Rc), b = repereA(coudes, L, Rc);
+  for (const [q, s] of [[a, 0], [b, L]]) { const dr = decalageRessort(ressort, s, L); if (dr) q.P.add(dr); }
   g.userData.ports = [port(a.P.clone(), a.T.clone().negate(), 'tube-m', t), port(b.P.clone(), b.T.clone(), 'tube-m', t)];
   return g;
 }

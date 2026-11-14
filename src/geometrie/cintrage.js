@@ -38,11 +38,27 @@ function abscisses(coudes, L, R) {
   return [...new Set(ss.map(s => +s.toFixed(6)))].sort((u, v) => u - v);
 }
 
+// « Ressort » : un tube recuit se force un peu de côté pour entrer dans son raccord. Le décalage v (repère
+// du tube) est nul au bout fixe et complet au bout libre (fin = 0 : bout A, 1 : bout B), avec une pente
+// nulle aux deux bouts : les bouts restent droits dans leurs raccords.
+export function decalageRessort(ressort, s, L) {
+  if (!ressort) return null;
+  let t = Math.min(1, Math.max(0, s / L));
+  if (ressort.fin === 0) t = 1 - t;
+  const w = t * t * (3 - 2 * t);
+  return new THREE.Vector3(...ressort.v).multiplyScalar(w);
+}
+function repere(coudes, s, R, L, ressort) {
+  const q = repereA(coudes, s, R), d = decalageRessort(ressort, s, L);
+  if (d) q.P.add(d);
+  return q;
+}
+
 // Surface tubulaire de rayon r le long de l'axe ; interieur : normales vers l'axe.
-export function surfaceCintree(coudes, L, R, r, interieur = false, seg = 40) {
+export function surfaceCintree(coudes, L, R, r, interieur = false, seg = 40, ressort = null) {
   const ss = abscisses(coudes, L, R), pos = [], nor = [], idx = [];
   ss.forEach((s, i) => {
-    const q = repereA(coudes, s, R);
+    const q = repere(coudes, s, R, L, ressort);
     for (let j = 0; j <= seg; j++) {
       const a = j / seg * 2 * Math.PI;
       const n = q.N.clone().multiplyScalar(Math.cos(a)).addScaledVector(q.B, Math.sin(a));
@@ -66,8 +82,8 @@ export function surfaceCintree(coudes, L, R, r, interieur = false, seg = 40) {
 }
 
 // Couronne au bout du tube (épaisseur de la paroi), à l'abscisse s.
-export function bout(coudes, s, R, rExt, rInt, seg = 40) {
-  const q = repereA(coudes, s, R), sg = s <= 0 ? -1 : 1, pos = [], idx = [];
+export function bout(coudes, s, R, rExt, rInt, seg = 40, ressort = null, L = 1) {
+  const q = repere(coudes, s, R, L, ressort), sg = s <= 0 ? -1 : 1, pos = [], idx = [];
   for (let j = 0; j <= seg; j++) {
     const a = j / seg * 2 * Math.PI;
     const n = q.N.clone().multiplyScalar(Math.cos(a)).addScaledVector(q.B, Math.sin(a));

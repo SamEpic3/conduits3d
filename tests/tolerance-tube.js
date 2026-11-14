@@ -18,5 +18,14 @@ res.ecart = m.ecartJoint(m.portMonde(m.piece(2), libre.port), m.portMonde(m.piec
 C.annuler(); const e2 = m.debutDeplacement(3); m.deplacer(e2, pc.sortie.clone().multiplyScalar(0.2));
 C.fermer({ id: 2, port: libre.port }, { id: 3, port: cible.port });
 res.note2 = $('note').textContent;
+// 0,07 po de côté et 0,1 po trop court : le tube se force et s'allonge
+{ const eb = m.debutDeplacement(3); m.deplacer(eb, pc.sortie.clone().multiplyScalar(-0.4)); }
+const lat = new T.Vector3(1, 0, 0).cross(pc.sortie).normalize(); if (lat.length() < 0.5) lat.set(0, 1, 0);
+const lat2 = pc.sortie.clone().cross(lat).normalize(); const e3 = m.debutDeplacement(3); m.deplacer(e3, lat2.clone().multiplyScalar(0.07).addScaledVector(pc.sortie, -0.1));
+C.fermer({ id: 2, port: libre.port }, { id: 3, port: cible.port });
+res.note3 = $('note').textContent;
+res.ecart3 = m.ecartJoint(m.portMonde(m.piece(2), libre.port), m.portMonde(m.piece(3), cible.port));
+res.ressort = m.piece(2).cintrage.ressort;
+const s2 = JSON.stringify({ pieces: m.pieces, seq: m.seq }); m.restaurer(s2); res.apresRestaurer = m.ecartJoint(m.portMonde(m.piece(2), libre.port), m.portMonde(m.piece(3), cible.port));
 return res;
 })().catch(e => ({ erreur: e.message }));
