@@ -1024,7 +1024,34 @@ function startDrag(kind,e,extra){
   drag={kind,id:e.pointerId,x0:e.clientX,y0:e.clientY,before:JSON.stringify(snapshot()),before0:snapshot(),...extra};
   stage.classList.add('dragging');
 }
+// ---------- Deux doigts : toujours déplacer / zoomer la vue ----------
+// Un doigt posé sur le tube ou le levier est gardé par l'appli (OrbitControls ne le voit pas). Si un 2e doigt
+// arrive, on annule ce qu'il faisait et on « présente » le 1er doigt à OrbitControls, pour qu'il ait les deux
+// doigts et fasse un vrai déplacement à deux doigts (sinon il recevait les mouvements d'un doigt inconnu
+// et la vue sautait d'un point de vue à l'autre).
+const doigts=new Map(); let synthese=false, gesteMulti=false, dernierAppui=null;
 stage.addEventListener('pointerdown',e=>{
+  if(e.pointerType!=='touch'||synthese) return;
+  gesteMulti=doigts.size>=1;
+  doigts.set(e.pointerId,{x:e.clientX,y:e.clientY,cache:true});
+  if(!gesteMulti){ dernierAppui={t:performance.now(),avaitPreview:!!mPreview}; return; }
+  if(drag) cancelDrag();
+  if(mPreview&&dernierAppui&&!dernierAppui.avaitPreview&&performance.now()-dernierAppui.t<600){ mPreview=null; hideBubble(); renderAnnot(); req(); }
+  for(const [id,d] of doigts) if(d.cache&&id!==e.pointerId){
+    d.cache=false; synthese=true;
+    try{ cv.dispatchEvent(new PointerEvent('pointerdown',{pointerId:id,pointerType:'touch',isPrimary:true,clientX:d.x,clientY:d.y,pageX:d.x,pageY:d.y,button:0,buttons:1,bubbles:true,cancelable:true})); }
+    finally{ synthese=false; }
+  }
+},true);
+cv.addEventListener('pointerdown',e=>{ const d=doigts.get(e.pointerId); if(d) d.cache=false; },true);
+stage.addEventListener('pointermove',e=>{
+  const d=doigts.get(e.pointerId); if(!d) return; d.x=e.clientX; d.y=e.clientY;
+  if(d.cache&&!(drag&&drag.id===e.pointerId)&&e.target===cv) e.stopPropagation();   // doigt inconnu d'OrbitControls : on ne lui passe pas ses mouvements
+},true);
+const leverDoigt=e=>{ doigts.delete(e.pointerId); if(!doigts.size) gesteMulti=false; };
+addEventListener('pointerup',leverDoigt,true); addEventListener('pointercancel',leverDoigt,true);
+stage.addEventListener('pointerdown',e=>{
+  if(synthese||gesteMulti) return;
   if(e.target!==cv||(e.pointerType==='mouse'&&e.button!==0)) return;
   if(drag){ if(e.pointerType==='touch') cancelDrag(); return; }
   if(tool==='hand'){
@@ -1528,7 +1555,7 @@ if(INTEGRE){
   }
   // Toucher le fond (sans tube ni levier dessous) : le tiroir se range
   let appuiFond=null;
-  cv.addEventListener('pointerdown',e=>{ appuiFond=tel.matches&&!pick(e)?{x:e.clientX,y:e.clientY}:null; });
+  cv.addEventListener('pointerdown',e=>{ appuiFond=tel.matches&&doigts.size<=1&&!pick(e)?{x:e.clientX,y:e.clientY}:null; });
   cv.addEventListener('pointerup',e=>{ if(appuiFond&&Math.hypot(e.clientX-appuiFond.x,e.clientY-appuiFond.y)<6&&!drag) placer('replie'); appuiFond=null; });
   placer('moitie',false);
   requestAnimationFrame(()=>{ placerFlottants(); resize(); });
@@ -1537,7 +1564,8 @@ if(INTEGRE){ $('btnExport').lastChild.textContent='Poser dans le montage'; paren
 if(!INTEGRE && matchMedia('(pointer: fine)').matches) $('len').focus({preventScroll:true});
 window.__cint={get state(){return {present,L,p,psi,lever,bends,cur,marks,measures};},
   setLever:v=>{lever=v; if(present){const lim=bendLimit(); if(lim.max>0.5){ if(!cur) cur={s0:p,a:0,th:psi}; cur.a=Math.max(cur.a,Math.min(v,lim.max)); }} render(); sync();},
-  setP:v=>{commit(); p=v; render();}};
+  setP:v=>{commit(); p=v; render();},
+  camera, controls, pickAt:(x,y)=>pick({clientX:x,clientY:y}), get drag(){return drag;}, get doigts(){return [...doigts].map(([k,v])=>k+(v.cache?"c":""));}};
 </script>
 <script>
 // App installable (PWA) : le service worker garde tout en cache pour l'utiliser sans Internet
