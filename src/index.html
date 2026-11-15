@@ -204,7 +204,9 @@ label.check{display:flex;gap:8px;align-items:center;color:var(--fg);font-size:14
     padding:0 12px 8px;gap:6px;overflow:hidden;box-shadow:0 -4px 18px rgb(0 0 0 / .14);border-bottom:0;transition:height .22s ease}
   .panel.glisse{transition:none}
   .entete{display:block}
-  .poignee{display:flex;justify-content:center;align-items:center;height:22px;margin:0 -12px;cursor:grab;touch-action:none}
+  .poignee{display:flex;justify-content:center;align-items:center;height:30px;margin:0 -12px;cursor:grab;touch-action:none}
+  .poignee span{width:46px!important}
+  .onglets{touch-action:none}
   .poignee span{width:40px;height:5px;border-radius:3px;background:var(--line)}
   .contenu{flex:1;min-height:0;overflow:auto;overscroll-behavior:contain;padding-bottom:6px}
   .onglets{position:sticky;top:0;z-index:2}
@@ -214,7 +216,10 @@ label.check{display:flex;gap:8px;align-items:center;color:var(--fg);font-size:14
 @media (max-height:520px) and (orientation:landscape){
   .panel{top:calc(var(--haut) + 50px);right:calc(env(safe-area-inset-right) + 6px);bottom:calc(var(--h-outils) + 6px);width:270px;padding:8px 10px;gap:8px}
   .g-outils{right:auto;width:min(420px,60vw);left:calc(env(safe-area-inset-left) + 6px);bottom:6px;height:52px;padding:0 4px;border:1px solid var(--line);border-radius:14px;box-shadow:0 2px 8px rgb(0 0 0 / .1)}
+  .g-modes{left:calc(env(safe-area-inset-left) + 60px);transform:none}
   .g-vue{right:calc(env(safe-area-inset-right) + 284px)}
+  .panel.replie{bottom:auto}
+  .panel.replie .contenu > section{display:none}
   .catalogue .tuiles{grid-template-columns:repeat(3,minmax(0,1fr))}
   .contenu{min-width:0}
   .onglets button{font-size:12px}

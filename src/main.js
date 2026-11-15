@@ -34,6 +34,18 @@ const historique = [];
 // ---------------------------------------------------------------------------
 // Messages
 
+// Téléphone debout : le message se pose juste au-dessus du tiroir, quelle que soit sa hauteur.
+function placerNote() {
+  const n = $('note');
+  if (!matchMedia('(max-width:760px) and (orientation:portrait)').matches) { n.style.bottom = ''; return; }
+  const haut = document.querySelector('.panel').getBoundingClientRect().top;
+  const base = n.offsetParent ? n.offsetParent.getBoundingClientRect().bottom : innerHeight;
+  n.style.bottom = Math.round(base - haut + 8) + 'px';
+}
+new ResizeObserver(placerNote).observe(document.querySelector('.panel'));
+document.querySelector('.panel').addEventListener('transitionend', placerNote);
+addEventListener('resize', placerNote);
+
 // Messages : ils apparaissent puis s'effacent seuls (les erreurs restent plus longtemps).
 // garder : reste affiché (une action attend l'élève) ; details : texte technique, affiché sur demande.
 let minuterieNote = null;
@@ -61,6 +73,7 @@ function note(texte, erreur = false, { garder = false, details = null } = {}) {
   n.append(x);
   n.classList.toggle('erreur', erreur);
   n.classList.add('visible');
+  placerNote();
   if (!garder) minuterieNote = setTimeout(() => n.classList.remove('visible'),
     Math.min(9000, 2800 + texte.length * 40) * (erreur ? 1.6 : 1));
 }
@@ -346,7 +359,11 @@ function choisirOnglet(o) {
   if (panneau.classList.contains('replie')) { panneau.classList.remove('replie'); $('btnPanneau').setAttribute('aria-expanded', 'true'); }
   if (typeof ouvrirTiroir === 'function') ouvrirTiroir();
 }
-document.querySelectorAll('[data-onglet]').forEach(b => b.onclick = () => choisirOnglet(b.dataset.onglet));
+document.querySelectorAll('[data-onglet]').forEach(b => b.onclick = () => {
+  // Téléphone : toucher l'onglet déjà ouvert range le panneau.
+  if (telephone.matches && b.dataset.onglet === onglet && !panneauRange()) return fermerPanneau();
+  choisirOnglet(b.dataset.onglet);
+});
 
 // ---------------------------------------------------------------------------
 // Liste de matériel : pièces comptées par sorte et grosseur ; tuyaux et tubes avec chaque longueur de coupe.
@@ -834,6 +851,7 @@ $('cv').addEventListener('pointerup', e => {
   selection = surPiece ? ancetre(surPiece.object, 'idPiece')?.userData.idPiece ?? null : null;
   rafraichir();
   if (selection) { const p = montage.piece(selection); choisirOnglet('piece'); note(`${nomPiece(p)} choisi${e_(p)}. Clic droit ou toucher long : translation, rotation et autres actions.`); }
+  else fermerPanneau();       // toucher le fond : le panneau se range (téléphone)
 });
 $('cv').addEventListener('pointercancel', () => { if (glisse) finGlisse(true); if (tourne) finTourne(true); });
 $('cv').addEventListener('pointermove', e => {
@@ -1021,7 +1039,7 @@ var tiroir = { etat: 'moitie' };
 function hauteursTiroir() {
   const H = $('stage').clientHeight, outils = document.querySelector('.g-outils').offsetHeight;
   const onglets = document.querySelector('.onglets').offsetHeight;
-  return { replie: 22 + onglets + 16, moitie: Math.round(H * 0.44), plein: H - outils - 62 };
+  return { replie: 30 + onglets + 16, moitie: Math.round(H * 0.44), plein: H - outils - 62 };
 }
 function placerTiroir(etat, anime = true) {
   const panneau = document.querySelector('.panel');
@@ -1032,35 +1050,55 @@ function placerTiroir(etat, anime = true) {
   $('poignee').setAttribute('aria-expanded', String(etat !== 'replie'));
 }
 function ouvrirTiroir() { if (portrait.matches && tiroir.etat === 'replie') placerTiroir('moitie'); }
+// Téléphone (debout ou couché) : ranger le panneau ; debout, il reste les onglets ; couché, aussi.
+var telephone = matchMedia('(max-width:760px) and (orientation:portrait), (max-height:520px) and (orientation:landscape)');
+function panneauRange() {
+  return portrait.matches ? tiroir.etat === 'replie' : document.querySelector('.panel').classList.contains('replie');
+}
+function fermerPanneau() {
+  if (!telephone.matches) return;
+  if (portrait.matches) placerTiroir('replie');
+  else document.querySelector('.panel').classList.add('replie');
+}
 portrait.addEventListener('change', () => placerTiroir(tiroir.etat, false));
 addEventListener('resize', () => placerTiroir(tiroir.etat, false));
 {
-  let tire = null;
-  const p = $('poignee'), panneau = document.querySelector('.panel');
-  p.addEventListener('pointerdown', e => {
+  // On tire le tiroir par la poignée ou par la barre des onglets (un toucher sur un onglet reste un toucher).
+  let tire = null, annulerClic = false;
+  const p = $('poignee'), panneau = document.querySelector('.panel'), onglets = document.querySelector('.onglets');
+  const debut = (e, surOnglets) => {
     if (!portrait.matches) return;
-    tire = { y: e.clientY, h0: panneau.offsetHeight, bouge: false };
-    panneau.classList.add('glisse');
-    try { p.setPointerCapture(e.pointerId); } catch { /* événement simulé */ }
-  });
-  p.addEventListener('pointermove', e => {
+    tire = { y: e.clientY, h0: panneau.offsetHeight, bouge: false, surOnglets, id: e.pointerId, cible: e.currentTarget };
+    if (!surOnglets) { panneau.classList.add('glisse'); try { p.setPointerCapture(e.pointerId); } catch { /* simulé */ } }
+  };
+  p.addEventListener('pointerdown', e => debut(e, false));
+  onglets.addEventListener('pointerdown', e => debut(e, true));
+  const bouger = e => {
     if (!tire) return;
     const dy = tire.y - e.clientY;
-    if (Math.abs(dy) > 4) tire.bouge = true;
+    if (!tire.bouge && Math.abs(dy) > 8) {
+      tire.bouge = true;
+      panneau.classList.add('glisse');
+      try { tire.cible.setPointerCapture(tire.id); } catch { /* simulé */ }
+    }
+    if (!tire.bouge) return;
     const h = hauteursTiroir();
     panneau.style.setProperty('--h-tiroir', Math.max(h.replie, Math.min(h.plein, tire.h0 + dy)) + 'px');
-  });
+  };
+  p.addEventListener('pointermove', bouger);
+  onglets.addEventListener('pointermove', bouger);
+  onglets.addEventListener('click', e => { if (annulerClic) { e.stopPropagation(); e.preventDefault(); annulerClic = false; } }, true);
   const fin = () => {
     if (!tire) return;
-    const bouge = tire.bouge;
+    const { bouge, surOnglets } = tire;
     tire = null;
-    if (!bouge) return placerTiroir(tiroir.etat === 'replie' ? 'moitie' : 'replie');
+    if (bouge && surOnglets) { annulerClic = true; setTimeout(() => { annulerClic = false; }, 80); }
+    if (!bouge) { panneau.classList.remove('glisse'); if (surOnglets) return; return placerTiroir(tiroir.etat === 'replie' ? 'moitie' : 'replie'); }
     const h = hauteursTiroir(), actuelle = panneau.offsetHeight;
     const plus = Object.entries(h).sort((a, b) => Math.abs(a[1] - actuelle) - Math.abs(b[1] - actuelle))[0][0];
     placerTiroir(plus);
   };
-  p.addEventListener('pointerup', fin);
-  p.addEventListener('pointercancel', fin);
+  for (const el of [p, onglets]) { el.addEventListener('pointerup', fin); el.addEventListener('pointercancel', fin); }
   p.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); placerTiroir(tiroir.etat === 'replie' ? 'moitie' : tiroir.etat === 'moitie' ? 'plein' : 'replie'); } });
   placerTiroir('moitie', false);
 }
