@@ -177,7 +177,7 @@ html.integre .toolbar.views,html.integre .toolbar.zoom{display:none!important}
 html.integre .toolbar{top:12px;border-radius:12px;box-shadow:0 2px 10px rgb(0 0 0 / .08)}
 html.integre .toolbar.tools{left:var(--gauche-outils,230px)}
 html.integre .toolbar.modes{top:68px;left:12px}
-html.integre .popover{top:68px;left:var(--gauche-outils,230px)}
+html.integre .popover{top:118px;left:12px}
 html.integre .panel{top:12px;right:12px;width:320px;max-height:calc(100% - 24px);border-radius:14px}
 html.integre .tabs{background:var(--bg);border-radius:9px;padding:3px;margin:10px 12px 0;gap:2px}
 html.integre .tabs button{border:0;border-radius:7px;padding:7px 4px;font-size:13px}
@@ -189,6 +189,7 @@ html.integre .note{border-radius:12px;box-shadow:0 6px 20px rgb(0 0 0 / .14)}
 .menuvue button[aria-checked="true"]::after{content:"  ✓";color:var(--copper)}
 .menuvue hr{border:0;border-top:1px solid var(--line);margin:4px 2px}
 @media (min-width:761px) and (max-width:1320px){html.integre .toolbar.tools button>span{display:none}}
+.toolbar button.on,.toolbar button.on:hover:not(:disabled){background:var(--copper);color:#fff}
 @keyframes apparaitre{from{opacity:0;transform:scale(.94)}to{opacity:1;transform:none}}
 @media (hover:hover){.menuvue button:hover{background:var(--bg)}}
 html.integre button:hover:not(:disabled){border-color:var(--line)}
@@ -210,7 +211,7 @@ html.integre input{-webkit-user-select:text;user-select:text}
   html.integre .toolbar.tools .reftag{position:absolute;margin:-2px 0 0 26px;font-size:9px}
   html.integre .toolbar.tools .tool{position:relative}
   html.integre .toolbar.modes{top:calc(env(safe-area-inset-top) + 68px);left:8px}
-  html.integre .popover{top:calc(env(safe-area-inset-top) + 68px);left:8px}
+  html.integre .popover{top:calc(env(safe-area-inset-top) + 126px);left:8px}
   html.integre .menuvue{top:calc(env(safe-area-inset-top) + 56px)!important;right:8px!important;left:auto!important}
   html.integre .panel{top:auto;left:0;right:0;bottom:var(--h-outils);width:auto;height:var(--h-tiroir,44dvh);max-height:none;border-radius:16px 16px 0 0;border-bottom:0;
     box-shadow:0 -4px 18px rgb(0 0 0 / .14);overflow:hidden;transition:height .22s ease;background:var(--panel);backdrop-filter:none}
@@ -240,9 +241,56 @@ html.integre input{-webkit-user-select:text;user-select:text}
   html.integre .gizmo{bottom:66px}
 }
 @media (prefers-reduced-motion:reduce){.menuvue{animation:none}html.integre .panel{transition:none}}
+
+svg.ic{width:17px;height:17px;flex:none;fill:none;stroke:currentColor;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round;vertical-align:-3px}
+.pbody button,.menuvue button,.toolbar.modes button{display:inline-flex;align-items:center;justify-content:center;gap:7px}
+.menuvue button{justify-content:flex-start;gap:10px}
+.menuvue button svg.ic{color:var(--muted)}
+.pbody button.primary svg.ic{color:#fff}
+.pbody [data-rot]{flex-direction:column;gap:3px}
+.toolbar.modes .sep{width:1px;align-self:stretch;background:var(--line);margin:4px 2px}
+.toolbar.modes .effmes svg.ic{color:inherit}
+@media (hover:hover){.toolbar.modes .effmes:hover:not(:disabled){color:#c62828}}
+.seul-integre-flex{display:none!important}
+html.integre .seul-integre-flex:not([hidden]){display:flex!important}
+#barreRef{align-items:center}
+#barreRef .lbl{font:600 12px var(--body);color:var(--muted);text-transform:uppercase;letter-spacing:.06em;padding:0 6px 0 8px}
+#barreRef .ref{font:600 13px var(--body);gap:6px}
+#barreRef .ref .tape{display:inline-block;width:14px;height:8px;border-radius:2px;background:var(--tape)}
+#barreRef .ref .tape.b{background:var(--tapeB)}
+#barreRef .ref:disabled{opacity:.4}
+@media (max-width:760px) and (orientation:portrait){html.integre .toolbar.modes button{min-height:40px;padding:6px 9px}}
 </style>
 </head>
 <body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="i-axeX" viewBox="0 0 24 24"><path d="M3 12h18M7 8l-4 4 4 4M17 8l4 4-4 4"/></symbol>
+  <symbol id="i-axeY" viewBox="0 0 24 24"><path d="M12 3v18M8 7l4-4 4 4M8 17l4 4 4-4"/></symbol>
+  <symbol id="i-axeZ" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="1.6" fill="currentColor"/></symbol>
+  <symbol id="i-diagonale" viewBox="0 0 24 24"><path d="M5 19 19 5M13 5h6v6M11 19H5v-6"/></symbol>
+  <symbol id="i-poubelle" viewBox="0 0 24 24"><path d="M3 6h18M8 6V4h8v2M6 6l1 14h10l1-14M10 11v6M14 11v6"/></symbol>
+  <symbol id="i-cube" viewBox="0 0 24 24"><path d="M12 2.5 3.5 7v10l8.5 4.5 8.5-4.5V7z"/><path d="m3.5 7 8.5 4.5L20.5 7M12 11.5v10"/></symbol>
+  <symbol id="i-face" viewBox="0 0 24 24"><rect x="5" y="5" width="14" height="14" rx="1"/><path d="M12 5v14"/></symbol>
+  <symbol id="i-dessus" viewBox="0 0 24 24"><rect x="5" y="5" width="14" height="14" rx="1"/><circle cx="12" cy="12" r="3"/></symbol>
+  <symbol id="i-cote" viewBox="0 0 24 24"><path d="M4 17h16M6 17V9h12v8"/><path d="M9 9V6h6v3"/></symbol>
+  <symbol id="i-cadrer" viewBox="0 0 24 24"><path d="M8 3H5a2 2 0 0 0-2 2v3M16 3h3a2 2 0 0 1 2 2v3M8 21H5a2 2 0 0 1-2-2v-3M16 21h3a2 2 0 0 0 2-2v-3"/></symbol>
+  <symbol id="i-tournerG" viewBox="0 0 24 24"><path d="M3.5 12a8.5 8.5 0 1 0 2.6-6.1L3.5 8"/><path d="M3.5 3v5h5"/></symbol>
+  <symbol id="i-tournerD" viewBox="0 0 24 24"><path d="M20.5 12a8.5 8.5 0 1 1-2.6-6.1L20.5 8"/><path d="M20.5 3v5h-5"/></symbol>
+  <symbol id="i-echanger" viewBox="0 0 24 24"><path d="M7 4 3 8l4 4M3 8h14M17 20l4-4-4-4M21 16H7"/></symbol>
+  <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
+  <symbol id="i-telecharger" viewBox="0 0 24 24"><path d="M12 3v12M7 10l5 5 5-5M5 21h14"/></symbol>
+  <symbol id="i-tube" viewBox="0 0 24 24"><path d="M4 21v-8a9 9 0 0 1 9-9h8"/><path d="M9 21v-8a4 4 0 0 1 4-4h8"/></symbol>
+  <symbol id="i-rotation" viewBox="0 0 24 24"><path d="M20.5 12a8.5 8.5 0 1 1-2.6-6.1L20.5 8"/><path d="M20.5 3v5h-5"/></symbol>
+  <symbol id="i-oeil" viewBox="0 0 24 24"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></symbol>
+  <symbol id="i-x" viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"/></symbol>
+  <symbol id="i-coche" viewBox="0 0 24 24"><path d="m5 12.5 4.5 4.5L19 7"/></symbol>
+  <symbol id="i-haut" viewBox="0 0 24 24"><path d="M12 19V5M6 11l6-6 6 6"/></symbol>
+  <symbol id="i-bas" viewBox="0 0 24 24"><path d="M12 5v14M6 13l6 6 6-6"/></symbol>
+  <symbol id="i-levier" viewBox="0 0 24 24"><path d="M5 19 17 5"/><circle cx="18" cy="4" r="2"/><path d="M3 21h8"/></symbol>
+  <symbol id="i-marqueur" viewBox="0 0 24 24"><path d="M4 20h5M14.5 4.5l5 5L10 19H5v-5z"/><path d="M12 7l5 5"/></symbol>
+  <symbol id="i-recommencer" viewBox="0 0 24 24"><path d="M3.5 12a8.5 8.5 0 1 0 2.6-6.1L3.5 8"/><path d="M3.5 3v5h5"/></symbol>
+  <symbol id="i-bout" viewBox="0 0 24 24"><path d="M3 12h13"/><path d="M16 7v10"/><circle cx="20" cy="12" r="1.6" fill="currentColor"/></symbol>
+</svg>
 <div id="bandeIos" aria-hidden="true"></div>
 <div class="stage t-hand" id="stage">
   <canvas id="cv" aria-label="Cintreuse à levier série 400 en 3D"></canvas>
@@ -272,14 +320,14 @@ html.integre input{-webkit-user-select:text;user-select:text}
   <button id="btnVueRond" class="rond seul-integre" aria-haspopup="menu" aria-label="Vue" title="Vue : 3D, face, dessus, côté, tout voir">
     <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg></button>
   <div class="menuvue" id="menuVue" role="menu" hidden>
-    <button role="menuitem" data-vue2="iso">3D (isométrique)</button>
-    <button role="menuitem" data-vue2="face">Face</button>
-    <button role="menuitem" data-vue2="top">Dessus</button>
-    <button role="menuitem" data-vue2="side">Côté</button>
-    <button role="menuitem" id="mvFit">Tout voir (le gabarit)</button>
+    <button role="menuitem" data-vue2="iso"><svg class="ic" aria-hidden="true"><use href="#i-cube"/></svg>3D (isométrique)</button>
+    <button role="menuitem" data-vue2="face"><svg class="ic" aria-hidden="true"><use href="#i-face"/></svg>Face</button>
+    <button role="menuitem" data-vue2="top"><svg class="ic" aria-hidden="true"><use href="#i-dessus"/></svg>Dessus</button>
+    <button role="menuitem" data-vue2="side"><svg class="ic" aria-hidden="true"><use href="#i-cote"/></svg>Côté</button>
+    <button role="menuitem" id="mvFit"><svg class="ic" aria-hidden="true"><use href="#i-cadrer"/></svg>Tout voir (le gabarit)</button>
     <hr>
-    <button role="menuitemcheckbox" id="mvBender" aria-checked="false">Masquer la cintreuse</button>
-    <button role="menuitemcheckbox" id="mvLabels" aria-checked="false">Masquer les étiquettes des marques</button>
+    <button role="menuitemcheckbox" id="mvBender" aria-checked="false"><svg class="ic" aria-hidden="true"><use href="#i-oeil"/></svg>Masquer la cintreuse</button>
+    <button role="menuitemcheckbox" id="mvLabels" aria-checked="false"><svg class="ic" aria-hidden="true"><use href="#i-oeil"/></svg>Masquer les étiquettes des marques</button>
   </div>
   <div class="popover" id="markMenu" hidden>
     <h3>Mesurer à partir de</h3>
@@ -293,10 +341,18 @@ html.integre input{-webkit-user-select:text;user-select:text}
     <button id="markMenuOk" class="primary">OK</button>
   </div>
   <div class="toolbar modes" id="modes" role="radiogroup" aria-label="Type de mesure" hidden>
-    <button class="mode on" data-mode="d" role="radio" aria-checked="true" title="Distance réelle entre les deux points">⤢ Directe</button>
-    <button class="mode" data-mode="x" role="radio" aria-checked="false" title="Écart selon X (largeur)">↔ X</button>
-    <button class="mode" data-mode="y" role="radio" aria-checked="false" title="Écart selon Y (hauteur)">↕ Y</button>
-    <button class="mode" data-mode="z" role="radio" aria-checked="false" title="Écart selon Z (profondeur)">⊙ Z</button>
+    <button class="mode on" data-mode="d" role="radio" aria-checked="true" title="Distance réelle entre les deux points"><svg class="ic" aria-hidden="true"><use href="#i-diagonale"/></svg>Directe</button>
+    <button class="mode" data-mode="x" role="radio" aria-checked="false" title="Écart selon X (largeur)"><svg class="ic" aria-hidden="true"><use href="#i-axeX"/></svg>X</button>
+    <button class="mode" data-mode="y" role="radio" aria-checked="false" title="Écart selon Y (hauteur)"><svg class="ic" aria-hidden="true"><use href="#i-axeY"/></svg>Y</button>
+    <button class="mode" data-mode="z" role="radio" aria-checked="false" title="Écart selon Z (profondeur)"><svg class="ic" aria-hidden="true"><use href="#i-axeZ"/></svg>Z</button>
+    <span class="sep" aria-hidden="true"></span>
+    <button class="effmes" id="btnEffMesBarre" title="Effacer toutes les mesures" disabled><svg class="ic" aria-hidden="true"><use href="#i-poubelle"/></svg><span>Effacer</span></button>
+  </div>
+  <div class="toolbar modes seul-integre-flex" id="barreRef" role="radiogroup" aria-label="Marquer à partir de" hidden>
+    <b class="lbl">Depuis</b>
+    <button class="ref" data-ref="A" role="radio" title="Mesurer les marques à partir du bout A"><i class="tape"></i>Bout A</button>
+    <button class="ref" data-ref="B" role="radio" title="Mesurer les marques à partir du bout B"><i class="tape b"></i>Bout B</button>
+    <button class="ref" data-ref="M" role="radio" title="À partir d'une marque existante (choisir laquelle)"><svg class="ic" aria-hidden="true"><use href="#i-marqueur"/></svg>Marque…</button>
   </div>
   <div class="toolbar views" role="group" aria-label="Vue">
     <button data-view="face" title="Vue de face (1)">Face</button>
@@ -342,18 +398,18 @@ html.integre input{-webkit-user-select:text;user-select:text}
             <label for="len">Longueur (po)<small id="lenHelp" class="sub">au 1/16 po, ex. 12 3/16</small></label>
             <input id="len" type="text" inputmode="decimal" autocomplete="off" value="12" aria-describedby="lenHelp">
           </div>
-          <button class="primary wide" id="btnInsert">Insérer le tube</button>
+          <button class="primary wide" id="btnInsert"><svg class="ic" aria-hidden="true"><use href="#i-plus"/></svg>Insérer le tube</button>
         </section>
         <section id="secPos">
           <h2>Positionner</h2>
           <p class="hint">Levier relevé, glisse le tube le long de son axe ou ajuste par 1/16&nbsp;po (garde le bouton enfoncé pour aller plus vite). Bout&nbsp;A <span class="tape"></span>, bout&nbsp;B <span class="tape b"></span>.</p>
           <div class="row">
-            <button id="btnUp" aria-label="Monter le tube de un seizième de pouce">↑ 1/16 po</button>
-            <button id="btnDown" aria-label="Descendre le tube de un seizième de pouce">↓ 1/16 po</button>
+            <button id="btnUp" aria-label="Monter le tube de un seizième de pouce"><svg class="ic" aria-hidden="true"><use href="#i-haut"/></svg>1/16 po</button>
+            <button id="btnDown" aria-label="Descendre le tube de un seizième de pouce"><svg class="ic" aria-hidden="true"><use href="#i-bas"/></svg>1/16 po</button>
           </div>
           <div class="row">
-            <button id="btnFlip">Demi-tour</button>
-            <button id="btnLift">Relever le levier</button>
+            <button id="btnFlip"><svg class="ic" aria-hidden="true"><use href="#i-echanger"/></svg>Demi-tour</button>
+            <button id="btnLift"><svg class="ic" aria-hidden="true"><use href="#i-levier"/></svg>Relever le levier</button>
           </div>
         </section>
         <section id="secRot">
@@ -361,20 +417,20 @@ html.integre input{-webkit-user-select:text;user-select:text}
           <p class="hint">Fais tourner le tube sur lui-même entre deux coudes pour sortir du plan. Glisse aussi le tube <b>de travers</b> avec la main. La ligne de repère <span class="stripe"></span> sur le tube pointe l'angle sur le rapporteur sous le loquet.</p>
           <div class="rotread"><span>Rotation du tube</span><b id="rotRead">0°</b></div>
           <div class="row">
-            <button id="rotM1" aria-label="Tourner de moins un degré">⟲ 1°</button>
-            <button id="rotP1" aria-label="Tourner de plus un degré">⟳ 1°</button>
+            <button id="rotM1" aria-label="Tourner de moins un degré"><svg class="ic" aria-hidden="true"><use href="#i-tournerG"/></svg>1°</button>
+            <button id="rotP1" aria-label="Tourner de plus un degré"><svg class="ic" aria-hidden="true"><use href="#i-tournerD"/></svg>1°</button>
           </div>
           <div class="row">
-            <button data-rot="-90">⟲ 90°</button>
-            <button data-rot="-45">⟲ 45°</button>
-            <button data-rot="45">⟳ 45°</button>
-            <button data-rot="90">⟳ 90°</button>
+            <button data-rot="-90"><svg class="ic" aria-hidden="true"><use href="#i-tournerG"/></svg>90°</button>
+            <button data-rot="-45"><svg class="ic" aria-hidden="true"><use href="#i-tournerG"/></svg>45°</button>
+            <button data-rot="45"><svg class="ic" aria-hidden="true"><use href="#i-tournerD"/></svg>45°</button>
+            <button data-rot="90"><svg class="ic" aria-hidden="true"><use href="#i-tournerD"/></svg>90°</button>
           </div>
           <div class="len">
             <label for="rotTo">Tourner à (°)<small class="sub">0 à 359, ex. 90</small></label>
             <input id="rotTo" type="text" inputmode="decimal" autocomplete="off" value="90">
           </div>
-          <button class="wide" id="btnRotTo">Tourner à cet angle</button>
+          <button class="wide" id="btnRotTo"><svg class="ic" aria-hidden="true"><use href="#i-rotation"/></svg>Tourner à cet angle</button>
         </section>
         <section id="secMark">
           <h2>Marquer</h2>
@@ -382,15 +438,15 @@ html.integre input{-webkit-user-select:text;user-select:text}
             <label for="markPos" id="markPosLbl">Marque à (po du bout A)</label>
             <input id="markPos" type="text" inputmode="decimal" value="6" autocomplete="off">
           </div>
-          <button class="wide seul-integre" id="btnRefMarque" title="Point de départ des marques et des distances entrées">À partir de : bout A</button>
-          <button class="wide" id="btnMark">Marquer</button>
+          <button class="wide seul-integre" id="btnRefMarque" title="Point de départ des marques et des distances entrées"><svg class="ic" aria-hidden="true"><use href="#i-bout"/></svg>À partir de : bout A</button>
+          <button class="wide" id="btnMark"><svg class="ic" aria-hidden="true"><use href="#i-marqueur"/></svg>Marquer</button>
         </section>
         <section id="secTube">
           <h2>Tube</h2>
-          <button class="primary wide" id="btnPoser" title="Pose ce tube dans le montage de Conduits 3D">Poser dans le montage</button>
+          <button class="primary wide" id="btnPoser" title="Pose ce tube dans le montage de Conduits 3D"><svg class="ic" aria-hidden="true"><use href="#i-tube"/></svg>Poser dans le montage</button>
           <div class="row">
-            <button id="btnRestart" title="Remet un tube droit de la même longueur">Recommencer</button>
-            <button id="btnRemove">Retirer le tube</button>
+            <button id="btnRestart" title="Remet un tube droit de la même longueur"><svg class="ic" aria-hidden="true"><use href="#i-recommencer"/></svg>Recommencer</button>
+            <button id="btnRemove"><svg class="ic" aria-hidden="true"><use href="#i-x"/></svg>Retirer le tube</button>
           </div>
         </section>
       </div>
@@ -404,18 +460,18 @@ html.integre input{-webkit-user-select:text;user-select:text}
           <h2>Marques</h2>
           <ol class="bends" id="markList"></ol>
           <p class="empty" id="markEmpty">Aucune marque.</p>
-          <button class="wide" id="btnClearMarks">Effacer les marques</button>
+          <button class="wide" id="btnClearMarks"><svg class="ic" aria-hidden="true"><use href="#i-poubelle"/></svg>Effacer les marques</button>
         </section>
         <section>
           <h2>Mesures</h2>
           <ol class="bends" id="measList"></ol>
           <p class="empty" id="measEmpty">Choisis l'outil Mesure, puis clique deux points.</p>
-          <button class="wide" id="btnClearMeas">Effacer les mesures</button>
+          <button class="wide" id="btnClearMeas"><svg class="ic" aria-hidden="true"><use href="#i-poubelle"/></svg>Effacer les mesures</button>
         </section>
         <section>
           <h2>Exporter</h2>
           <p class="empty">Enregistre le tube cintré dans un fichier, pour le poser dans Conduits&nbsp;3D (Importer un tube cintré).</p>
-          <button class="wide" id="btnExport">Exporter le tube (.json)</button>
+          <button class="wide" id="btnExport"><svg class="ic" aria-hidden="true"><use href="#i-telecharger"/></svg>Exporter le tube (.json)</button>
         </section>
       </div>
     </div>
@@ -761,7 +817,7 @@ function sync(){
   $('btnLift').disabled=busy||lever<0.5;
   $('btnMark').disabled=busy||!present;
   $('btnClearMarks').disabled=busy||!present||!marks.length;
-  $('btnClearMeas').disabled=!measures.length;
+  $('btnClearMeas').disabled=!measures.length; $('btnEffMesBarre').disabled=!measures.length; majBarreRef();
   $('btnExport').disabled=!present; $('btnPoser').disabled=!present;
   $('btnRestart').disabled=busy||!present;
   $('btnUndo').disabled=busy||!history.length;
@@ -1192,7 +1248,7 @@ function setTool(t){
   tool=t;
   document.querySelectorAll('.tool').forEach(b=>{const on=b.dataset.tool===t; b.classList.toggle('on',on); b.setAttribute('aria-checked',on);});
   stage.classList.remove('t-hand','t-marker','t-eraser','t-measure'); stage.classList.add('t-'+t);
-  $('modes').hidden=t!=='measure'; cv.style.cursor='';
+  $('modes').hidden=t!=='measure'; $('barreRef').hidden=t!=='marker'; majBarreRef(); cv.style.cursor='';
   if(mPreview){mPreview=null; hideBubble();}
   if(t!=='marker') closeMenu();
   renderAnnot(); req();
@@ -1204,6 +1260,7 @@ function setTool(t){
 document.querySelectorAll('.tool').forEach(b=>b.onclick=()=>setTool(b.dataset.tool));
 function setMode(m){ mmode=m; if(mPreview){mPreview.mode=m; renderAnnot(); req();} document.querySelectorAll('.mode').forEach(b=>{const on=b.dataset.mode===m; b.classList.toggle('on',on); b.setAttribute('aria-checked',on);}); }
 document.querySelectorAll('.mode').forEach(b=>b.onclick=()=>setMode(b.dataset.mode));
+$('btnEffMesBarre').onclick=()=>{ if(measures.length) $('btnClearMeas').click(); };
 // Exporte le tube cintré (longueur et coudes) pour Conduits 3D.
 const INTEGRE=document.documentElement.classList.contains('integre');
 const donneesTube=()=>({format:'tube-cintre',version:1,source:'cintreuse3d',tube:'3/8',rayon:R,longueur:L,
@@ -1264,7 +1321,17 @@ function setRef(type,id){
   document.querySelectorAll('input[name=mref]').forEach(r=>r.checked=r.value===type);
   $('mrefMark').disabled=type!=='M'; $('mrefDir').disabled=type!=='M';
   $('markPosLbl').textContent=`Marque à (po ${refLong()})`; $('markRefTag').textContent=refName();
+  majBarreRef();
 }
+function majBarreRef(){
+  document.querySelectorAll('#barreRef .ref').forEach(b=>{ const on=b.dataset.ref===mref.type; b.classList.toggle('on',on); b.setAttribute('aria-checked',String(on)); });
+  const m=document.querySelector('#barreRef [data-ref=M]'); m.disabled=!marks.length;
+  m.lastChild.textContent=mref.type==='M'?`M${mref.id}…`:'Marque…';
+}
+document.querySelectorAll('#barreRef .ref').forEach(b=>b.onclick=e=>{
+  if(b.dataset.ref==='M'){ e.stopPropagation(); if(!marks.length) return; if(mref.type!=='M') setRef('M',marks[0].id); $('markMenu').hidden?openMenu():closeMenu(); return; }
+  setRef(b.dataset.ref); closeMenu();
+});
 function fillRefMarks(){
   const sel=$('mrefMark'), keep=mref.id; sel.innerHTML='';
   for(const m of marks.slice().sort((u,v)=>u.s-v.s)){const o=document.createElement('option'); o.value=m.id; o.textContent=`M${m.id} (${fmtIn(m.s)} du bout A)`; sel.appendChild(o);}
@@ -1281,7 +1348,7 @@ function openMenu(){ fillRefMarks(); $('markMenu').hidden=false; $('markMenuBtn'
 function closeMenu(){ $('markMenu').hidden=true; $('markMenuBtn').setAttribute('aria-expanded','false'); }
 $('markMenuBtn').onclick=e=>{ e.stopPropagation(); if(tool!=='marker') setTool('marker'); $('markMenu').hidden?openMenu():closeMenu(); };
 $('markMenuOk').onclick=closeMenu;
-document.addEventListener('pointerdown',e=>{ if(!$('markMenu').hidden&&!e.target.closest('#markMenu,#markMenuBtn')) closeMenu(); },true);
+document.addEventListener('pointerdown',e=>{ if(!$('markMenu').hidden&&!e.target.closest('#markMenu,#markMenuBtn,#barreRef,#btnRefMarque')) closeMenu(); },true);
 document.addEventListener('keydown',e=>{ if(e.key==='Escape'){ closeMenu(); if(mPreview){mPreview=null; hideBubble(); renderAnnot(); req(); note('Mesure annulée.');} } });
 
 // ---------- Boutons ----------
@@ -1401,7 +1468,7 @@ if(INTEGRE){
     else if(b.id==='mvLabels') $('tglLabels').click();
   });
   // --- Référence du marqueur, depuis le panneau (la petite flèche n'est pas dans la barre du bas) ---
-  const majRef=()=>{ $('btnRefMarque').textContent='À partir de : '+({A:'bout A',B:'bout B',M:'une marque'}[mref.type]||'bout A'); };
+  const majRef=()=>{ $('btnRefMarque').lastChild.textContent='À partir de : '+({A:'bout A',B:'bout B',M:'une marque'}[mref.type]||'bout A'); };
   $('btnRefMarque').onclick=e=>{ e.stopPropagation(); $('markMenu').hidden?openMenu():closeMenu(); };
   $('markMenu').addEventListener('change',majRef); $('markMenuOk').addEventListener('click',majRef);
   majRef();
@@ -1466,7 +1533,7 @@ if(INTEGRE){
   placer('moitie',false);
   requestAnimationFrame(()=>{ placerFlottants(); resize(); });
 }
-if(INTEGRE){ $('btnExport').textContent='Poser dans le montage'; parent.postMessage({type:'conduits3d:pret'},'*'); }
+if(INTEGRE){ $('btnExport').lastChild.textContent='Poser dans le montage'; parent.postMessage({type:'conduits3d:pret'},'*'); }
 if(!INTEGRE && matchMedia('(pointer: fine)').matches) $('len').focus({preventScroll:true});
 window.__cint={get state(){return {present,L,p,psi,lever,bends,cur,marks,measures};},
   setLever:v=>{lever=v; if(present){const lim=bendLimit(); if(lim.max>0.5){ if(!cur) cur={s0:p,a:0,th:psi}; cur.a=Math.max(cur.a,Math.min(v,lim.max)); }} render(); sync();},
