@@ -172,7 +172,10 @@ label.check{display:flex;gap:8px;align-items:center;color:var(--fg);font-size:14
 /* --- Téléphone : barre mince en haut (fichier, modes, vue), outils au bas (au pouce), panneau en tiroir --- */
 @media (max-width:760px) and (orientation:portrait), (max-height:520px) and (orientation:landscape){
   :root{--h-outils:calc(58px + env(safe-area-inset-bottom));--haut:calc(env(safe-area-inset-top) + 8px)}
-  .toolbar{display:contents}
+  .toolbar[role=toolbar]{display:contents}
+  #modes,#barreRot{display:flex;flex-wrap:nowrap;gap:2px;padding:3px;max-width:calc(100% - 16px);overflow-x:auto;scrollbar-width:none}
+  #modes[hidden],#barreRot[hidden]{display:none}
+  #modes button,#barreRot button{min-height:0;padding:8px 10px;font-size:14px}
   .g{position:absolute;z-index:6;display:flex;align-items:center;gap:2px}
   .g .sep{display:none}
   .g-fichier{top:var(--haut);left:calc(env(safe-area-inset-left) + 8px)}

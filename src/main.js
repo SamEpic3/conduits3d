@@ -661,6 +661,7 @@ function choisirOutil(o) {
   if (o !== 'main' && fermeture) { fermeture = null; $('btnFermer').classList.remove('on'); }
   outil = o;
   document.querySelectorAll('[data-outil]').forEach(b => b.classList.toggle('on', b.dataset.outil === o));
+  if (o === 'mesure' && typeof fermerPanneau === 'function' && telephone) fermerPanneau();   // téléphone : on dégage la vue pour viser
   $('modes').hidden = o !== 'mesure';
   $('stage').classList.toggle('outil-mesure', o === 'mesure');
   if (o !== 'mesure') mesures.apercu = null;
