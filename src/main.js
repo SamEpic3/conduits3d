@@ -34,14 +34,28 @@ const historique = [];
 // ---------------------------------------------------------------------------
 // Messages
 
-// Téléphone debout : le message se pose juste au-dessus du tiroir, quelle que soit sa hauteur.
+// Téléphone debout : le message (et le repère X Y Z) se posent juste au-dessus du tiroir, quelle que soit sa hauteur.
 function placerNote() {
-  const n = $('note');
-  if (!matchMedia('(max-width:760px) and (orientation:portrait)').matches) { n.style.bottom = ''; return; }
+  const n = $('note'), g = $('gizmo');
+  if (!matchMedia('(max-width:760px) and (orientation:portrait)').matches) { n.style.bottom = ''; g.style.bottom = ''; return; }
   const haut = document.querySelector('.panel').getBoundingClientRect().top;
   const base = n.offsetParent ? n.offsetParent.getBoundingClientRect().bottom : innerHeight;
   n.style.bottom = Math.round(base - haut + 8) + 'px';
+  const bg = (g.parentElement ? g.parentElement.getBoundingClientRect().bottom : innerHeight) - haut + 6;
+  g.style.bottom = Math.round(bg + (n.classList.contains('visible') ? n.offsetHeight + 6 : 0)) + 'px';
 }
+
+// Repère X Y Z (rouge, vert, bleu), tourné comme la caméra.
+function majRepere() {
+  const q = vue.camera.quaternion.clone().invert(), traits = [];
+  for (const [nom, v, c] of [['X', [1, 0, 0], '#c62828'], ['Y', [0, 1, 0], '#2f7a4f'], ['Z', [0, 0, 1], '#2b5fae']]) {
+    const w = new THREE.Vector3(...v).applyQuaternion(q);
+    traits.push({ nom, c, x: w.x * 24, y: -w.y * 24, z: w.z });
+  }
+  traits.sort((a, b) => a.z - b.z);
+  $('gizmo').innerHTML = traits.map(o => `<line x1="0" y1="0" x2="${o.x.toFixed(1)}" y2="${o.y.toFixed(1)}" stroke="${o.c}" stroke-width="2.4" stroke-linecap="round"/><text x="${(o.x * 1.3).toFixed(1)}" y="${(o.y * 1.3 + 4).toFixed(1)}" fill="${o.c}" text-anchor="middle">${o.nom}</text>`).join('');
+}
+vue.controls.addEventListener('change', majRepere);
 new ResizeObserver(placerNote).observe(document.querySelector('.panel'));
 document.querySelector('.panel').addEventListener('transitionend', placerNote);
 addEventListener('resize', placerNote);
@@ -69,12 +83,12 @@ function note(texte, erreur = false, { garder = false, details = null } = {}) {
   const x = Object.assign(document.createElement('button'), { type: 'button', className: 'fermer-note', title: 'Fermer' });
   x.innerHTML = '<svg class="ic" aria-hidden="true"><use href="#i-x"/></svg>';
   x.setAttribute('aria-label', 'Fermer le message');
-  x.onclick = () => { clearTimeout(minuterieNote); n.classList.remove('visible'); };
+  x.onclick = () => { clearTimeout(minuterieNote); n.classList.remove('visible'); placerNote(); };
   n.append(x);
   n.classList.toggle('erreur', erreur);
   n.classList.add('visible');
   placerNote();
-  if (!garder) minuterieNote = setTimeout(() => n.classList.remove('visible'),
+  if (!garder) minuterieNote = setTimeout(() => { n.classList.remove('visible'); placerNote(); },
     Math.min(9000, 2800 + texte.length * 40) * (erreur ? 1.6 : 1));
 }
 
@@ -211,7 +225,7 @@ function choisirManip(m) {
   manipPour = selection;
   placerFleches();
   vue.demander();
-  if (manip === 'translation') note('Translation : glisse une flèche (rouge = X, verte = profondeur, bleue = verticale). Tout le morceau suit, au 1/16 po ; près d\'une sortie compatible, il se branche quand tu lâches.');
+  if (manip === 'translation') note('Translation : glisse une flèche (rouge = X, verte = Y vertical, bleue = Z profondeur). Tout le morceau suit, au 1/16 po ; près d\'une sortie compatible, il se branche quand tu lâches.');
   if (manip === 'rotation') note(`Rotation : glisse un cercle (rouge, vert, bleu : tout le morceau tourne autour de la pièce${axeJoint(selection) ? ' ; cuivre : la pièce tourne autour de son joint' : ''}), par pas de ${pas}°.`);
 }
 
@@ -457,17 +471,23 @@ function ajouter() {
     : `${nomPiece(p)} ajouté${e_(p)}. Pas la bonne ? Annuler. Pour l'orienter : clic droit ou toucher long, puis Rotation.`);
 }
 
+// Un seul outil allumé à la fois : pendant « Boucle », Sélection n'est pas allumé.
+function majOutils() {
+  document.querySelectorAll('[data-outil]').forEach(b => b.classList.toggle('on', b.dataset.outil === outil && !(fermeture && outil === 'main')));
+  $('btnFermer').classList.toggle('on', !!fermeture);
+}
+
 function demarrerFermeture() {
   if (outil !== 'main') choisirOutil('main');
   fermeture = { premiere: null };
-  $('btnFermer').classList.add('on');
+  majOutils();
   rafraichir();
   note('Fermer une boucle : clique deux raccords face à face (l\'app ajoute le tuyau ou le tube), ou le bout libre d\'un tube puis le raccord où il doit entrer. Échap pour annuler.', false, { garder: true });
 }
 
 function arreterFermeture() {
   fermeture = null;
-  $('btnFermer').classList.remove('on');
+  majOutils();
   rafraichir();
 }
 
@@ -658,9 +678,9 @@ function retablir() {
 }
 
 function choisirOutil(o) {
-  if (o !== 'main' && fermeture) { fermeture = null; $('btnFermer').classList.remove('on'); }
+  if (fermeture) fermeture = null;          // changer d'outil met fin à « Boucle »
   outil = o;
-  document.querySelectorAll('[data-outil]').forEach(b => b.classList.toggle('on', b.dataset.outil === o));
+  majOutils();
   if (o === 'mesure' && typeof fermerPanneau === 'function' && telephone) fermerPanneau();   // téléphone : on dégage la vue pour viser
   $('modes').hidden = o !== 'mesure';
   $('stage').classList.toggle('outil-mesure', o === 'mesure');
@@ -741,7 +761,7 @@ function tourner_(e) {
   }
   dessinerAnneaux();
   surligner(selection);
-  const nomAxe = t.i < 3 ? `autour de ${['X', 'la profondeur', 'la verticale'][t.i]}` : 'autour du joint';
+  const nomAxe = t.i < 3 ? `autour de ${['X', 'la verticale (Y)', 'la profondeur (Z)'][t.i]}` : 'autour du joint';
   note(`Rotation ${nomAxe} : ${a > 0 ? '+' : ''}${a}°` + (t.candidat ? ` — lâche ici pour brancher sur ${nomPiece(montage.piece(t.candidat.t.id))}.` : '.'));
   vue.demander();
 }
@@ -767,7 +787,7 @@ function finTourne(annule = false) {
   }
   const ouv = apresModification();
   rafraichir();
-  if (!ouv) note(t.etat ? `Morceau tourné de ${t.a}° ${['autour de X', 'autour de la profondeur', 'autour de la verticale'][t.i]}.` : `Pièce tournée de ${t.a}° autour de son joint.`);
+  if (!ouv) note(t.etat ? `Morceau tourné de ${t.a}° ${['autour de X', 'autour de la verticale (Y)', 'autour de la profondeur (Z)'][t.i]}.` : `Pièce tournée de ${t.a}° autour de son joint.`);
 }
 
 function glisser(e) {
@@ -1254,7 +1274,7 @@ document.querySelectorAll('[data-mode]').forEach(b => b.onclick = () => {
   document.querySelectorAll('[data-mode]').forEach(x => x.classList.toggle('on', x === b));
   mesures.dessiner(outil === 'mesure');
 });
-document.querySelectorAll('[data-vue]').forEach(b => b.onclick = () => vue.vue(b.dataset.vue, montage.groupe));
+document.querySelectorAll('[data-vue]').forEach(b => b.onclick = () => { vue.vue(b.dataset.vue, montage.groupe); majRepere(); });
 $('btnToutVoir').onclick = () => vue.cadrer(montage.groupe);
 
 // Menus de la barre d'outils (Fichier, Vue) : sous leur bouton ; un choix ou un clic ailleurs les ferme.
@@ -1393,6 +1413,7 @@ document.addEventListener('keydown', e => {
 });
 
 rafraichir();
+majRepere();
 $('chargement').hidden = true;
 note(montage.pieces.length ? 'Montage prêt.' : 'Touche une pièce dans le catalogue pour commencer le montage.');
-window.__conduits = { modifierCintrage, cercles, choisirManip, choisirOnglet, retablir, annuler, ouvrirMenu, materiel, catalogue, fleches, changerLongueur, ouvrirTexte, importerTexte: t => importerTube({ text: async () => t }), vue, montage, mesures, THREE, ajouter, choisirOutil, tourner, $, detacher, deplacer: (id, axe, d) => { selection = id; rafraichir(); const etat = montage.debutDeplacement(id); memoriser(); glisse = { axe, etat, d, candidat: null }; montage.deplacer(etat, AXES[axe].dir.clone().multiplyScalar(d)); glisse.candidat = montage.candidatAccrochage(etat.ids); finGlisse(); }, selectionner: id => { selection = id; rafraichir(); }, choisirSortie: (id, port) => { cible = { id, port }; rafraichir(); }, fermer: (a, b) => { demarrerFermeture(); clicFermeture(a); clicFermeture(b); } };
+window.__conduits = { majRepere, modifierCintrage, cercles, choisirManip, choisirOnglet, retablir, annuler, ouvrirMenu, materiel, catalogue, fleches, changerLongueur, ouvrirTexte, importerTexte: t => importerTube({ text: async () => t }), vue, montage, mesures, THREE, ajouter, choisirOutil, tourner, $, detacher, deplacer: (id, axe, d) => { selection = id; rafraichir(); const etat = montage.debutDeplacement(id); memoriser(); glisse = { axe, etat, d, candidat: null }; montage.deplacer(etat, AXES[axe].dir.clone().multiplyScalar(d)); glisse.candidat = montage.candidatAccrochage(etat.ids); finGlisse(); }, selectionner: id => { selection = id; rafraichir(); }, choisirSortie: (id, port) => { cible = { id, port }; rafraichir(); }, fermer: (a, b) => { demarrerFermeture(); clicFermeture(a); clicFermeture(b); } };

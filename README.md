@@ -25,7 +25,7 @@ Sur téléphone : outils en haut (icônes), panneau en tiroir au bas en portrait
 3. Clique une pièce : sa fiche s'ouvre (onglet **Pièce**). **Clic droit** ou **toucher long** sur une pièce : menu
    Translation, Rotation, Changer la longueur, Changer de sortie, Détacher, Fiche, Supprimer
    (seule cette pièce est enlevée : ce qui était branché dessus reste en place, et se rebranche avec « Fermer une boucle »).
-4. **Translation** (G) : trois flèches (rouge = X, verte = profondeur, bleue = verticale). Glisse une flèche : tout le
+4. **Translation** (G) : trois flèches (rouge = X, verte = Y vertical, bleue = Z profondeur). Glisse une flèche : tout le
    morceau relié à la pièce suit, au 1/16 po. **Rotation** (R) : cercles rouge, vert et bleu pour tourner le morceau
    autour de la pièce, et un cercle cuivre pour tourner la pièce autour de son joint, par pas de 5, 15, 45 ou 90°.
    **Détacher** sépare la pièce pour la bouger seule.

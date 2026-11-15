@@ -1,11 +1,12 @@
-// Flèches de déplacement (comme dans Blender) : rouge = X, vert = profondeur, bleu = vertical.
+// Flèches de déplacement : rouge = X, vert = Y (vertical), bleu = Z (profondeur), comme le repère en bas à gauche
+// et les mesures X, Y, Z.
 // Elles sont dessinées par-dessus le montage et gardent la même taille à l'écran.
 import * as THREE from 'three';
 
 export const AXES = [
   { nom: 'X', dir: new THREE.Vector3(1, 0, 0), couleur: 0xe0303a },
-  { nom: 'Y', dir: new THREE.Vector3(0, 0, -1), couleur: 0x4cae2e },  // profondeur (vert)
-  { nom: 'Z', dir: new THREE.Vector3(0, 1, 0), couleur: 0x2f6fe0 },   // vertical (bleu, comme Blender)
+  { nom: 'Y', dir: new THREE.Vector3(0, 1, 0), couleur: 0x4cae2e },   // vertical (vert)
+  { nom: 'Z', dir: new THREE.Vector3(0, 0, 1), couleur: 0x2f6fe0 },   // profondeur (bleu)
 ];
 
 export class Fleches {
@@ -80,7 +81,7 @@ export class Fleches {
   }
 }
 
-// Cercles de rotation : rouge autour de X, vert autour de la profondeur, bleu autour de la verticale ;
+// Cercles de rotation : rouge autour de X, vert autour de la verticale (Y), bleu autour de la profondeur (Z) ;
 // un cercle cuivre (s'il y a lieu) autour de l'axe du joint de la pièce.
 export class Cercles {
   constructor(vue) {
