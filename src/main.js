@@ -890,9 +890,11 @@ function ouvrirMenu(x, y) {
   menu.querySelector('[data-action="translation"]').classList.toggle('on', manip === 'translation' && manipPour === id);
   menu.querySelector('[data-action="rotation"]').classList.toggle('on', manip === 'rotation' && manipPour === id);
   menu.hidden = false;
-  const r = $('stage').getBoundingClientRect(), m = menu.getBoundingClientRect();
+  // (offsetWidth : la taille réelle, même pendant l'animation d'apparition)
+  const r = $('stage').getBoundingClientRect(), m = { width: menu.offsetWidth, height: menu.offsetHeight };
+  const bas = portrait.matches ? document.querySelector('.panel').getBoundingClientRect().top - r.top : r.height;
   menu.style.left = Math.max(6, Math.min(x - r.left, r.width - m.width - 6)) + 'px';
-  menu.style.top = Math.max(6, Math.min(y - r.top, r.height - m.height - 6)) + 'px';
+  menu.style.top = Math.max(6, Math.min(y - r.top, bas - m.height - 6)) + 'px';
   return true;
 }
 const fermerMenu = () => { $('menuPiece').hidden = true; };
@@ -923,15 +925,30 @@ $('cv').addEventListener('pointerdown', e => {
   if (e.pointerType === 'touch' && !glisse && !tourne) {
     clearTimeout(toucherLong?.minuterie);
     toucherLong = { x: e.clientX, y: e.clientY, minuterie: setTimeout(() => {
-      if (ouvrirMenu(toucherLong.x, toucherLong.y)) { appui = null; navigator.vibrate?.(15); }
+      const ok = ouvrirMenu(toucherLong.x, toucherLong.y);
+      if (ok) { appui = null; navigator.vibrate?.(15); }
+      cacherAnneau(ok);
       toucherLong = null;
     }, 550) };
+    if (pieceSous(e.clientX, e.clientY)) montrerAnneau(e.clientX, e.clientY);
   }
 });
 $('cv').addEventListener('pointermove', e => {
-  if (toucherLong && Math.hypot(e.clientX - toucherLong.x, e.clientY - toucherLong.y) > 8) { clearTimeout(toucherLong.minuterie); toucherLong = null; }
+  if (toucherLong && Math.hypot(e.clientX - toucherLong.x, e.clientY - toucherLong.y) > 8) finToucher();
 });
-const finToucher = () => { if (toucherLong) { clearTimeout(toucherLong.minuterie); toucherLong = null; } };
+const finToucher = () => { if (toucherLong) { clearTimeout(toucherLong.minuterie); toucherLong = null; cacherAnneau(false); } };
+// Anneau du toucher long (seulement sur une pièce) : il se remplit pendant l'appui.
+function montrerAnneau(x, y) {
+  const a = $('anneauToucher');
+  a.className = '';
+  a.style.left = x + 'px'; a.style.top = y + 'px';
+  void a.offsetWidth;             // relance l'animation
+  a.className = 'actif';
+}
+function cacherAnneau(reussi) {
+  const a = $('anneauToucher');
+  a.className = reussi ? 'fait' : '';
+}
 $('cv').addEventListener('pointercancel', finToucher);
 $('cv').addEventListener('pointerup', e => {
   finToucher();
@@ -1102,6 +1119,38 @@ addEventListener('resize', () => placerTiroir(tiroir.etat, false));
   for (const el of [p, onglets]) { el.addEventListener('pointerup', fin); el.addEventListener('pointercancel', fin); }
   p.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); placerTiroir(tiroir.etat === 'replie' ? 'moitie' : tiroir.etat === 'moitie' ? 'plein' : 'replie'); } });
   placerTiroir('moitie', false);
+
+  // Catalogue (ou autre onglet) déjà tout en haut : continuer à tirer vers le bas descend le tiroir.
+  const contenu = document.querySelector('.contenu');
+  let tirage = null;
+  contenu.addEventListener('touchstart', e => {
+    if (!portrait.matches || e.touches.length !== 1) return;
+    tirage = { y: e.touches[0].clientY, h0: panneau.offsetHeight, actif: false };
+  }, { passive: true });
+  contenu.addEventListener('touchmove', e => {
+    if (!tirage) return;
+    const dy = e.touches[0].clientY - tirage.y;
+    if (!tirage.actif) {
+      if (contenu.scrollTop > 0 || dy < 6) { if (dy < -6 || contenu.scrollTop > 0) tirage = null; return; }
+      tirage.actif = true; tirage.y = e.touches[0].clientY;
+      panneau.classList.add('glisse');
+      return;
+    }
+    e.preventDefault();
+    const h = hauteursTiroir();
+    panneau.style.setProperty('--h-tiroir', Math.max(h.replie, Math.min(h.plein, tirage.h0 - Math.max(0, e.touches[0].clientY - tirage.y))) + 'px');
+  }, { passive: false });
+  const finTirage = () => {
+    if (!tirage) return;
+    const t = tirage; tirage = null;
+    if (!t.actif) return;
+    const tire = t.h0 - panneau.offsetHeight;
+    // Assez tiré (1/5 de la hauteur ou 80 px) : on descend d'un cran ; sinon, retour.
+    const ordre = ['replie', 'moitie', 'plein'], i = ordre.indexOf(tiroir.etat);
+    placerTiroir(tire > Math.min(80, t.h0 / 5) && i > 0 ? (tire > t.h0 * 0.6 ? 'replie' : ordre[i - 1]) : tiroir.etat);
+  };
+  contenu.addEventListener('touchend', finTirage);
+  contenu.addEventListener('touchcancel', finTirage);
 }
 
 // ---------------------------------------------------------------------------
@@ -1219,7 +1268,7 @@ document.querySelectorAll('[data-menu]').forEach(b => b.onclick = () => {
   if (ouvert) return;
   menu.hidden = false;
   b.classList.add('ouvert'); b.setAttribute('aria-expanded', 'true');
-  const r = b.getBoundingClientRect(), st = $('stage').getBoundingClientRect(), m = menu.getBoundingClientRect();
+  const r = b.getBoundingClientRect(), st = $('stage').getBoundingClientRect(), m = { width: menu.offsetWidth };
   menu.style.left = Math.max(6, Math.min(r.left - st.left, st.width - m.width - 6)) + 'px';
   menu.style.top = (r.bottom - st.top + 6) + 'px';
 });

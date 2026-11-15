@@ -190,7 +190,7 @@ label.check{display:flex;gap:8px;align-items:center;color:var(--fg);font-size:14
   .toolbar .g-outils button.on{background:transparent;color:var(--copper-strong)}
   .g-outils button:disabled{opacity:.35}
   .menu-barre{z-index:22}
-  #modes,#barreRot{top:calc(var(--haut) + 52px);right:auto;left:8px}
+  #modes,#barreRot{top:calc(var(--haut) + 60px);right:auto;left:8px}
   .catalogue .tuiles{grid-template-columns:repeat(4,1fr)}
   .entete h1,.replier{display:none}
   button{padding:10px 10px;min-height:40px}
@@ -240,6 +240,18 @@ label.check{display:flex;gap:8px;align-items:center;color:var(--fg);font-size:14
   .menu button:hover:not(:disabled){background:var(--bg)}
 }
 .toolbar button.on,.toolbar button.on:hover{background:var(--copper);color:#fff}
+/* Toucher long : un anneau se remplit sous le doigt, puis le menu apparaît en douceur. */
+#anneauToucher{position:fixed;left:0;top:0;width:64px;height:64px;margin:-32px 0 0 -32px;pointer-events:none;z-index:30;opacity:0}
+#anneauToucher svg{width:100%;height:100%;transform:rotate(-90deg)}
+#anneauToucher circle{fill:rgb(184 105 47 / .12);stroke:var(--copper);stroke-width:4;stroke-linecap:round;stroke-dasharray:163.4;stroke-dashoffset:163.4}
+#anneauToucher.actif{opacity:1;transition:opacity .12s .1s}
+#anneauToucher.actif circle{animation:remplir .45s .1s linear forwards}
+#anneauToucher.fait{opacity:0;transform:scale(1.5);transition:opacity .25s,transform .25s}
+#anneauToucher.fait circle{stroke-dashoffset:0}
+@keyframes remplir{to{stroke-dashoffset:0}}
+#menuPiece:not([hidden]),.menu-barre:not([hidden]){animation:apparaitre .16s ease-out}
+@keyframes apparaitre{from{opacity:0;transform:scale(.94)}to{opacity:1;transform:none}}
+@media (prefers-reduced-motion:reduce){#anneauToucher{display:none}#menuPiece:not([hidden]),.menu-barre:not([hidden]){animation:none}}
 </style>
 <script type="importmap">{"imports":{"three":"./vendor/three.module.js","three/addons/controls/OrbitControls.js":"./vendor/addons/OrbitControls.js","three/addons/environments/RoomEnvironment.js":"./vendor/addons/RoomEnvironment.js","app/":"./src/"}}</script>
 </head>
@@ -364,6 +376,7 @@ label.check{display:flex;gap:8px;align-items:center;color:var(--fg);font-size:14
     <button data-pas="45">45°</button>
     <button data-pas="90">90°</button>
   </div>
+  <div id="anneauToucher" aria-hidden="true"><svg viewBox="0 0 64 64"><circle cx="32" cy="32" r="26"/></svg></div>
   <div id="menuPiece" class="menu" role="menu" hidden>
     <div class="menu-titre" id="menuTitre"></div>
     <button role="menuitem" data-action="translation"><svg class="ic" aria-hidden="true"><use href="#i-deplacer"/></svg><span>Translation</span> <kbd>G</kbd></button>
