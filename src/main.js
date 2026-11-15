@@ -1004,11 +1004,19 @@ function choisirModeApp(m) {
     if (!cadre.src) cadre.src = 'cintreuse.html?integre=1';
     cadre.hidden = false;
     cadre.focus();
+    requestAnimationFrame(envoyerDisposition);
   } else {
     cadre.hidden = true;
     vue.demander();
   }
 }
+// La cintreuse place ses outils juste à droite des boutons Montage | Cintrage.
+function envoyerDisposition() {
+  if (!cintreusePrete || modeApp !== 'cintrage') return;
+  const r = document.querySelector('.modes-app').getBoundingClientRect(), c = cadre.getBoundingClientRect();
+  cadre.contentWindow.postMessage({ type: 'conduits3d:disposition', droite: r.right - c.left }, '*');
+}
+addEventListener('resize', () => requestAnimationFrame(envoyerDisposition));
 document.querySelectorAll('[data-mode-app]').forEach(b => b.onclick = () => {
   if (b.dataset.modeApp === 'montage' && modeApp === 'cintrage') editionCintrage = null;
   choisirModeApp(b.dataset.modeApp);
@@ -1032,7 +1040,7 @@ function modifierCintrage(id) {
 
 addEventListener('message', e => {
   if (e.source !== cadre.contentWindow || !e.data) return;
-  if (e.data.type === 'conduits3d:pret') { cintreusePrete = true; aEnvoyer.splice(0).forEach(versCintreuse); }
+  if (e.data.type === 'conduits3d:pret') { cintreusePrete = true; aEnvoyer.splice(0).forEach(versCintreuse); envoyerDisposition(); }
   if (e.data.type === 'conduits3d:tube') recevoirTube(e.data.tube);
 });
 

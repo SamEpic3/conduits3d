@@ -167,10 +167,79 @@ html.integre #btnPoser{display:flex}
 html.integre body{padding:0!important}
 html.integre .stage{border-radius:0;height:100vh;height:100dvh;min-height:0}
 html.integre #bandeIos,html.integre #btnFull{display:none!important}
-html.integre .toolbar.tools{top:62px}
-html.integre .toolbar.modes{top:112px}
-html.integre .popover{top:110px}
-@media (max-width:700px){html.integre .panel{top:112px;max-height:calc(100% - 184px)}}
+
+/* ===== Intégrée dans Conduits 3D : même allure que le mode Montage ===== */
+.seul-integre{display:none!important}
+html.integre .seul-integre{display:revert!important}
+html.integre #btnVue{display:inline-flex!important}
+html.integre .poignee,html.integre #btnVueRond{display:none!important}
+html.integre .toolbar.views,html.integre .toolbar.zoom{display:none!important}
+html.integre .toolbar{top:12px;border-radius:12px;box-shadow:0 2px 10px rgb(0 0 0 / .08)}
+html.integre .toolbar.tools{left:var(--gauche-outils,230px)}
+html.integre .toolbar.modes{top:68px;left:12px}
+html.integre .popover{top:68px;left:var(--gauche-outils,230px)}
+html.integre .panel{top:12px;right:12px;width:320px;max-height:calc(100% - 24px);border-radius:14px}
+html.integre .tabs{background:var(--bg);border-radius:9px;padding:3px;margin:10px 12px 0;gap:2px}
+html.integre .tabs button{border:0;border-radius:7px;padding:7px 4px;font-size:13px}
+html.integre .tabs button[aria-selected="true"]{background:var(--panel);box-shadow:0 1px 3px rgb(0 0 0 / .12)}
+html.integre .pbody{border-top:0}
+html.integre .note{border-radius:12px;box-shadow:0 6px 20px rgb(0 0 0 / .14)}
+.menuvue{position:absolute;z-index:9;min-width:230px;display:grid;padding:5px;border-radius:11px;background:var(--panel);border:1px solid var(--line);box-shadow:0 10px 30px rgb(0 0 0 / .22);animation:apparaitre .16s ease-out}
+.menuvue button{border:0;background:transparent;text-align:left;padding:9px 10px;border-radius:7px;font-weight:500;font-size:14px}
+.menuvue button[aria-checked="true"]::after{content:"  ✓";color:var(--copper)}
+.menuvue hr{border:0;border-top:1px solid var(--line);margin:4px 2px}
+@media (min-width:761px) and (max-width:1320px){html.integre .toolbar.tools button>span{display:none}}
+@keyframes apparaitre{from{opacity:0;transform:scale(.94)}to{opacity:1;transform:none}}
+@media (hover:hover){.menuvue button:hover{background:var(--bg)}}
+html.integre button:hover:not(:disabled){border-color:var(--line)}
+@media (hover:hover){html.integre button:hover:not(:disabled){border-color:var(--copper)}}
+html.integre body{-webkit-user-select:none;user-select:none;-webkit-touch-callout:none;-webkit-tap-highlight-color:transparent}
+html.integre input{-webkit-user-select:text;user-select:text}
+/* Téléphone debout : outils au bas, panneau en tiroir, Vue en rond en haut à droite */
+@media (max-width:760px) and (orientation:portrait){
+  html.integre{--h-outils:calc(58px + env(safe-area-inset-bottom))}
+  html.integre #btnVue,html.integre .toolbar.tools .sep,html.integre #markMenuBtn,html.integre #btnFlipQuick{display:none!important}
+  html.integre #btnVueRond{display:grid!important;place-items:center;position:absolute;z-index:6;top:calc(env(safe-area-inset-top) + 8px);right:calc(env(safe-area-inset-right) + 8px);
+    width:42px;height:42px;padding:0;border-radius:50%;background:var(--panel);border:1px solid var(--line);box-shadow:0 2px 8px rgb(0 0 0 / .1)}
+  html.integre #btnVueRond svg{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}
+  html.integre .toolbar.tools{top:auto;left:0;right:0;bottom:0;height:var(--h-outils);border-radius:0;border:0;border-top:1px solid var(--line);box-shadow:none;padding:0 4px env(safe-area-inset-bottom);justify-content:space-around;gap:0}
+  html.integre .toolbar.tools button{flex:1;flex-direction:column;gap:3px;height:100%;padding:4px 2px;border-radius:0;background:transparent!important;font:500 11px var(--body);color:var(--muted)}
+  html.integre .toolbar.tools button span{display:block!important}
+  html.integre .toolbar.tools svg{width:22px;height:22px}
+  html.integre .toolbar.tools button.on{color:var(--copper-strong)}
+  html.integre .toolbar.tools .reftag{position:absolute;margin:-2px 0 0 26px;font-size:9px}
+  html.integre .toolbar.tools .tool{position:relative}
+  html.integre .toolbar.modes{top:calc(env(safe-area-inset-top) + 68px);left:8px}
+  html.integre .popover{top:calc(env(safe-area-inset-top) + 68px);left:8px}
+  html.integre .menuvue{top:calc(env(safe-area-inset-top) + 56px)!important;right:8px!important;left:auto!important}
+  html.integre .panel{top:auto;left:0;right:0;bottom:var(--h-outils);width:auto;height:var(--h-tiroir,44dvh);max-height:none;border-radius:16px 16px 0 0;border-bottom:0;
+    box-shadow:0 -4px 18px rgb(0 0 0 / .14);overflow:hidden;transition:height .22s ease;background:var(--panel);backdrop-filter:none}
+  html.integre .panel.glisse{transition:none}
+  html.integre .panel .ph{display:none}
+  html.integre .poignee{display:flex!important;justify-content:center;align-items:center;height:30px;cursor:grab;touch-action:none;flex:none}
+  html.integre .poignee span{width:46px;height:5px;border-radius:3px;background:var(--line)}
+  html.integre .pmain{flex:1;border-top:0}
+  html.integre .tabs{margin:0 12px;touch-action:none}
+  html.integre .pbody{overscroll-behavior:contain}
+  html.integre .hud{left:6px;right:auto;bottom:auto;padding:4px;border-radius:10px}
+  html.integre .ro{padding:2px 6px;min-width:0}
+  html.integre .ro span{font-size:9.5px}
+  html.integre .ro b{font-size:13px}
+  html.integre .gizmo{left:auto;right:4px;bottom:auto;top:calc(env(safe-area-inset-top) + 58px);width:58px;height:58px}
+  html.integre .note{left:8px;right:8px;transform:none;max-width:none;bottom:auto}
+  html.integre .note.gone{transform:translateY(6px)}
+  html.integre button{min-height:40px}
+  html.integre input[type=text]{font-size:16px}
+}
+/* Téléphone couché : outils en haut à côté des modes, sans libellés ; panneau à droite */
+@media (max-height:520px) and (orientation:landscape){
+  html.integre .toolbar.tools span{display:none}
+  html.integre .toolbar{top:8px}
+  html.integre .toolbar.modes{top:58px}
+  html.integre .panel{top:58px;right:8px;width:280px;max-height:calc(100% - 66px)}
+  html.integre .gizmo{bottom:66px}
+}
+@media (prefers-reduced-motion:reduce){.menuvue{animation:none}html.integre .panel{transition:none}}
 </style>
 </head>
 <body>
@@ -196,6 +265,21 @@ html.integre .popover{top:110px}
       <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 14 4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11"/></svg><span>Annuler</span></button>
     <button id="btnFlipQuick" title="Demi-tour du tube (D)" aria-label="Faire un demi-tour avec le tube" disabled>
       <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 7H5M9 3 5 7l4 4"/><path d="M4 17h15M15 13l4 4-4 4"/></svg><span>Demi-tour</span></button>
+    <span class="sep seul-integre" aria-hidden="true"></span>
+    <button id="btnVue" class="seul-integre" aria-haspopup="menu" aria-expanded="false" title="Vue : 3D, face, dessus, côté, tout voir">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg><span>Vue</span></button>
+  </div>
+  <button id="btnVueRond" class="rond seul-integre" aria-haspopup="menu" aria-label="Vue" title="Vue : 3D, face, dessus, côté, tout voir">
+    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg></button>
+  <div class="menuvue" id="menuVue" role="menu" hidden>
+    <button role="menuitem" data-vue2="iso">3D (isométrique)</button>
+    <button role="menuitem" data-vue2="face">Face</button>
+    <button role="menuitem" data-vue2="top">Dessus</button>
+    <button role="menuitem" data-vue2="side">Côté</button>
+    <button role="menuitem" id="mvFit">Tout voir (le gabarit)</button>
+    <hr>
+    <button role="menuitemcheckbox" id="mvBender" aria-checked="false">Masquer la cintreuse</button>
+    <button role="menuitemcheckbox" id="mvLabels" aria-checked="false">Masquer les étiquettes des marques</button>
   </div>
   <div class="popover" id="markMenu" hidden>
     <h3>Mesurer à partir de</h3>
@@ -240,6 +324,7 @@ html.integre .popover{top:110px}
   </div>
 
   <aside class="panel" id="panel">
+    <div class="poignee seul-integre" id="poignee" role="button" tabindex="0" aria-label="Agrandir ou réduire le panneau"><span></span></div>
     <div class="ph">
       <span class="chip" id="chip">Aucun tube</span>
       <button id="panelToggle" class="ptoggle" aria-expanded="true" aria-controls="panelMain" title="Replier le panneau" aria-label="Replier le panneau">
@@ -297,6 +382,7 @@ html.integre .popover{top:110px}
             <label for="markPos" id="markPosLbl">Marque à (po du bout A)</label>
             <input id="markPos" type="text" inputmode="decimal" value="6" autocomplete="off">
           </div>
+          <button class="wide seul-integre" id="btnRefMarque" title="Point de départ des marques et des distances entrées">À partir de : bout A</button>
           <button class="wide" id="btnMark">Marquer</button>
         </section>
         <section id="secTube">
@@ -684,6 +770,7 @@ let noteTimer=0;
 function note(t,warn){
   const n=$('note'); n.textContent=t; n.classList.toggle('warn',!!warn); n.classList.remove('gone');
   clearTimeout(noteTimer); noteTimer=setTimeout(()=>n.classList.add('gone'),warn?7000:4000);
+  window.placerFlottants?.();
 }
 
 // ---------- Historique ----------
@@ -705,6 +792,11 @@ function undo(){
 // ---------- Caméra, cadrage ----------
 function freeRegion(){
   const W=stage.clientWidth||1000, H=stage.clientHeight||800, pnl=$('panel');
+  // Intégrée, téléphone debout : la vue libre est entre la barre du haut et le tiroir (+ outils du bas).
+  if(document.documentElement.classList.contains('integre')&&matchMedia('(max-width:760px) and (orientation:portrait)').matches){
+    const outils=document.querySelector('.toolbar.tools').offsetHeight;
+    return {W,H,l:10,t:70,r:W-10,b:H-pnl.offsetHeight-outils-10};
+  }
   const pw=W>700&&!pnl.classList.contains('closed')?pnl.offsetWidth+20:10;
   return {W,H,l:10,t:60,r:W-pw-60,b:H-70};
 }
@@ -1279,6 +1371,101 @@ themeColors(); resize();
 onCam(); setTool('hand'); setRef('A'); fillRefMarks(); render(); sync(); loop();
 $('loading').hidden=true;
 note('Choisis la longueur du tube dans le panneau, puis insère-le.');
+
+// ===== Intégrée dans Conduits 3D : menu Vue, tiroir au téléphone, flottants au-dessus du tiroir =====
+if(INTEGRE){
+  const tel=matchMedia('(max-width:760px) and (orientation:portrait)');
+  const outilsBar=document.querySelector('.toolbar.tools'), pnl=$('panel');
+  addEventListener('message',e=>{
+    const m=e.data; if(!m||e.source!==parent) return;
+    if(m.type==='conduits3d:disposition'){ document.documentElement.style.setProperty('--gauche-outils',Math.round(m.droite+8)+'px'); resize(); }
+  });
+  // --- Menu Vue (remplace les barres Vue et Zoom) ---
+  const menu=$('menuVue');
+  const majCoches=()=>{ $('mvBender').setAttribute('aria-checked',$('tglBender').getAttribute('aria-pressed')); $('mvLabels').setAttribute('aria-checked',$('tglLabels').getAttribute('aria-pressed')); };
+  const ouvrirMenuVue=b=>{
+    if(!menu.hidden){ menu.hidden=true; return; }
+    majCoches(); menu.hidden=false;
+    if(!tel.matches){ const r=b.getBoundingClientRect(), st=stage.getBoundingClientRect();
+      menu.style.left=Math.max(6,Math.min(r.left-st.left,st.width-menu.offsetWidth-6))+'px'; menu.style.top=(r.bottom-st.top+6)+'px'; menu.style.right='auto'; }
+  };
+  $('btnVue').onclick=()=>ouvrirMenuVue($('btnVue'));
+  $('btnVueRond').onclick=()=>ouvrirMenuVue($('btnVueRond'));
+  document.addEventListener('pointerdown',e=>{ if(!menu.hidden&&!e.target.closest('#menuVue,#btnVue,#btnVueRond')) menu.hidden=true; },true);
+  addEventListener('keydown',e=>{ if(e.key==='Escape') menu.hidden=true; });
+  menu.addEventListener('click',e=>{
+    const b=e.target.closest('button'); if(!b) return; menu.hidden=true;
+    if(b.dataset.vue2) setView(b.dataset.vue2);
+    else if(b.id==='mvFit') zoomGabarit();
+    else if(b.id==='mvBender') $('tglBender').click();
+    else if(b.id==='mvLabels') $('tglLabels').click();
+  });
+  // --- Référence du marqueur, depuis le panneau (la petite flèche n'est pas dans la barre du bas) ---
+  const majRef=()=>{ $('btnRefMarque').textContent='À partir de : '+({A:'bout A',B:'bout B',M:'une marque'}[mref.type]||'bout A'); };
+  $('btnRefMarque').onclick=e=>{ e.stopPropagation(); $('markMenu').hidden?openMenu():closeMenu(); };
+  $('markMenu').addEventListener('change',majRef); $('markMenuOk').addEventListener('click',majRef);
+  majRef();
+  // --- Tiroir (téléphone debout) : poignée, barre des onglets, tirer le contenu vers le bas, toucher le fond ---
+  let etat='moitie';
+  const hauteurs=()=>{ const H=stage.clientHeight, o=outilsBar.offsetHeight, t=document.querySelector('.tabs').offsetHeight;
+    return {replie:30+t+12, moitie:Math.round(H*0.44), plein:H-o-62}; };
+  function placer(e,anime=true){
+    if(!tel.matches){ pnl.style.removeProperty('--h-tiroir'); return; }
+    etat=e; pnl.classList.toggle('glisse',!anime);
+    pnl.style.setProperty('--h-tiroir',hauteurs()[e]+'px');
+  }
+  window.placerFlottants=()=>{
+    const n=$('note'), h=document.querySelector('.hud'), g=$('gizmo');
+    if(!tel.matches){ n.style.bottom=''; h.style.bottom=''; return; }
+    const base=stage.getBoundingClientRect().bottom, haut=pnl.getBoundingClientRect().top;
+    const bh=Math.round(base-haut+6); h.style.bottom=bh+'px';
+    n.style.bottom=(bh+h.offsetHeight+6)+'px';
+  };
+  const apres=()=>{ placerFlottants(); resize(); if(!manual){ const t=fitTarget(); camera.position.copy(t.pos); controls.target.copy(t.target); controls.update(); onCam(); } };
+  new ResizeObserver(()=>placerFlottants()).observe(pnl);
+  pnl.addEventListener('transitionend',apres);
+  tel.addEventListener('change',()=>{ placer(etat,false); apres(); });
+  addEventListener('resize',()=>{ placer(etat,false); placerFlottants(); });
+  const ouvrir=()=>{ if(tel.matches&&etat==='replie') placer('moitie'); };
+  // Onglets : toucher l'onglet ouvert range le tiroir ; un autre l'ouvre.
+  const onglet=rel=>{ const ouvert=rel?!$('paneRel').hidden:!$('paneCmd').hidden;
+    if(tel.matches&&ouvert&&etat!=='replie') return placer('replie');
+    setTab(rel); ouvrir(); };
+  $('tabCmd').onclick=()=>onglet(false); $('tabRel').onclick=()=>onglet(true);
+  // Tirer par la poignée ou par la barre des onglets
+  let tire=null, annulerClic=false;
+  const p=$('poignee'), tabs=document.querySelector('.tabs');
+  const debut=(e,surTabs)=>{ if(!tel.matches) return; tire={y:e.clientY,h0:pnl.offsetHeight,bouge:false,surTabs,id:e.pointerId,cible:e.currentTarget};
+    if(!surTabs){ pnl.classList.add('glisse'); try{p.setPointerCapture(e.pointerId);}catch{} } };
+  const bouger=e=>{ if(!tire) return; const dy=tire.y-e.clientY;
+    if(!tire.bouge&&Math.abs(dy)>8){ tire.bouge=true; pnl.classList.add('glisse'); try{tire.cible.setPointerCapture(tire.id);}catch{} }
+    if(!tire.bouge) return; const h=hauteurs(); pnl.style.setProperty('--h-tiroir',Math.max(h.replie,Math.min(h.plein,tire.h0+dy))+'px'); };
+  const fin=()=>{ if(!tire) return; const {bouge,surTabs}=tire; tire=null;
+    if(bouge&&surTabs){ annulerClic=true; setTimeout(()=>{annulerClic=false;},80); }
+    if(!bouge){ pnl.classList.remove('glisse'); if(surTabs) return; return placer(etat==='replie'?'moitie':'replie'); }
+    const h=hauteurs(), a=pnl.offsetHeight; placer(Object.entries(h).sort((x,y)=>Math.abs(x[1]-a)-Math.abs(y[1]-a))[0][0]); };
+  p.addEventListener('pointerdown',e=>debut(e,false)); tabs.addEventListener('pointerdown',e=>debut(e,true));
+  for(const el of [p,tabs]){ el.addEventListener('pointermove',bouger); el.addEventListener('pointerup',fin); el.addEventListener('pointercancel',fin); }
+  tabs.addEventListener('click',e=>{ if(annulerClic){ e.stopPropagation(); e.preventDefault(); annulerClic=false; } },true);
+  // Contenu déjà en haut : continuer à tirer vers le bas descend le tiroir
+  let tirage=null;
+  for(const c of [$('paneCmd'),$('paneRel')]){
+    c.addEventListener('touchstart',e=>{ if(!tel.matches||e.touches.length!==1) return; tirage={y:e.touches[0].clientY,h0:pnl.offsetHeight,actif:false,c}; },{passive:true});
+    c.addEventListener('touchmove',e=>{ if(!tirage) return; const dy=e.touches[0].clientY-tirage.y;
+      if(!tirage.actif){ if(c.scrollTop>0||dy<6){ if(dy<-6||c.scrollTop>0) tirage=null; return; } tirage.actif=true; tirage.y=e.touches[0].clientY; pnl.classList.add('glisse'); return; }
+      e.preventDefault(); const h=hauteurs(); pnl.style.setProperty('--h-tiroir',Math.max(h.replie,Math.min(h.plein,tirage.h0-Math.max(0,e.touches[0].clientY-tirage.y)))+'px'); },{passive:false});
+    const finT=()=>{ if(!tirage) return; const t=tirage; tirage=null; if(!t.actif) return;
+      const tire2=t.h0-pnl.offsetHeight, ordre=['replie','moitie','plein'], i=ordre.indexOf(etat);
+      placer(tire2>Math.min(80,t.h0/5)&&i>0?(tire2>t.h0*0.6?'replie':ordre[i-1]):etat); };
+    c.addEventListener('touchend',finT); c.addEventListener('touchcancel',finT);
+  }
+  // Toucher le fond (sans tube ni levier dessous) : le tiroir se range
+  let appuiFond=null;
+  cv.addEventListener('pointerdown',e=>{ appuiFond=tel.matches&&!pick(e)?{x:e.clientX,y:e.clientY}:null; });
+  cv.addEventListener('pointerup',e=>{ if(appuiFond&&Math.hypot(e.clientX-appuiFond.x,e.clientY-appuiFond.y)<6&&!drag) placer('replie'); appuiFond=null; });
+  placer('moitie',false);
+  requestAnimationFrame(()=>{ placerFlottants(); resize(); });
+}
 if(INTEGRE){ $('btnExport').textContent='Poser dans le montage'; parent.postMessage({type:'conduits3d:pret'},'*'); }
 if(!INTEGRE && matchMedia('(pointer: fine)').matches) $('len').focus({preventScroll:true});
 window.__cint={get state(){return {present,L,p,psi,lever,bends,cur,marks,measures};},
