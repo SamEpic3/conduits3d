@@ -73,6 +73,8 @@ ol.coudes{margin:2px 0 0;padding-left:20px;font:500 12.5px var(--mono)}
 .toolbar button:hover:not(:disabled){background:var(--bg)}
 .toolbar button.on{background:var(--copper);color:#fff}
 .toolbar .sep{width:1px;align-self:stretch;background:var(--line);margin:4px 2px}
+.g{display:contents}
+.poignee{display:none}
 #modes{top:58px}
 #barreRot{top:58px;align-items:center}
 @media (max-width:1320px){.toolbar .txt.opt{display:none}}
@@ -127,9 +129,10 @@ button{display:inline-flex;align-items:center;justify-content:center;gap:6px}
 .toolbar .modes-app button.on{background:var(--panel);color:var(--fg);box-shadow:0 1px 3px rgb(0 0 0 / .14)}
 #cadreCintreuse{position:absolute;inset:0;width:100%;height:100%;border:0;z-index:3;background:var(--stage)}
 /* Mode Cintrage : la cintreuse occupe la vue ; seule la barre des modes reste de Conduits 3D. */
-body.mode-cintrage .toolbar[role=toolbar] > :not(.modes-app),body.mode-cintrage .panel,body.mode-cintrage #note,
+body.mode-cintrage .g:not(.g-modes),body.mode-cintrage .panel,body.mode-cintrage #note,
 body.mode-cintrage #etiquettes,body.mode-cintrage #barreRot,body.mode-cintrage #modes,body.mode-cintrage .menu{display:none!important}
 body.mode-cintrage .toolbar[role=toolbar]{z-index:6;right:auto}
+body.mode-cintrage .g-modes{z-index:6}
 .toolbar button.ouvert{background:var(--bg)}
 @media (pointer:coarse){.menu kbd{display:none}}
 .coche-ic{visibility:hidden;margin-left:-4px}
@@ -159,37 +162,63 @@ label.check{display:flex;gap:8px;align-items:center;color:var(--fg);font-size:14
 #note{position:absolute;left:50%;bottom:14px;transform:translateX(calc(-50% - 160px));z-index:4;max-width:min(560px,calc(100% - 360px));padding:9px 14px;border-radius:10px;margin:0;
   background:color-mix(in srgb,var(--panel) 94%,transparent);border:1px solid var(--line);font-size:14px;text-align:center;box-shadow:0 2px 8px rgb(0 0 0 / .08)}
 #note.erreur{border-color:var(--warn);color:var(--warn)}
+#note{display:flex;flex-wrap:wrap;align-items:center;justify-content:center;gap:4px 8px;opacity:0;pointer-events:none;transition:opacity .25s ease;padding-right:34px;border-radius:12px;box-shadow:0 6px 20px rgb(0 0 0 / .14)}
+#note.visible{opacity:1;pointer-events:auto}
+#note .lien{border:0;background:none;padding:0;min-height:0;color:var(--copper-strong);font:600 13px var(--body);text-decoration:underline;text-underline-offset:2px}
+#note .details{flex-basis:100%;font-size:12.5px;color:var(--muted)}
+#note .fermer-note{position:absolute;top:50%;right:4px;transform:translateY(-50%);border:0;background:none;padding:4px;min-height:0;color:var(--muted)}
+#note .fermer-note .ic{width:16px;height:16px}
 #chargement{position:absolute;inset:0;display:grid;place-items:center;color:var(--muted)}
-/* --- Téléphone : plein écran ; outils en haut --- */
+/* --- Téléphone : barre mince en haut (fichier, modes, vue), outils au bas (au pouce), panneau en tiroir --- */
 @media (max-width:760px) and (orientation:portrait), (max-height:520px) and (orientation:landscape){
-  .toolbar{top:calc(env(safe-area-inset-top) + 6px);left:calc(env(safe-area-inset-left) + 6px);right:6px;max-width:none;flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none;gap:2px}
-  .toolbar::-webkit-scrollbar{display:none}
-  .toolbar .txt{display:none}
-  .toolbar button{padding:8px 9px;font-size:16px;min-width:38px;flex:none}
-  .toolbar [data-vue]{font-size:13px;padding:8px 6px}
-  .toolbar .sep{flex:none}
-  #modes,#barreRot{top:calc(env(safe-area-inset-top) + 56px);right:auto}
+  :root{--h-outils:calc(58px + env(safe-area-inset-bottom));--haut:calc(env(safe-area-inset-top) + 8px)}
+  .toolbar{display:contents}
+  .g{position:absolute;z-index:6;display:flex;align-items:center;gap:2px}
+  .g .sep{display:none}
+  .g-fichier{top:var(--haut);left:calc(env(safe-area-inset-left) + 8px)}
+  .g-vue{top:var(--haut);right:calc(env(safe-area-inset-right) + 8px)}
+  .g-modes{top:var(--haut);left:50%;transform:translateX(-50%)}
+  .g-fichier button,.g-vue button{width:42px;height:42px;min-height:0;padding:0;border-radius:50%;background:var(--panel);border:1px solid var(--line);box-shadow:0 2px 8px rgb(0 0 0 / .1)}
+  .g-vue .ic.petit,.g .txt{display:none}
+  .g-modes .modes-app{background:var(--panel);border:1px solid var(--line);box-shadow:0 2px 8px rgb(0 0 0 / .1);border-radius:999px;padding:3px}
+  .g-modes .modes-app button{border-radius:999px;padding:8px 16px;min-height:0;font-size:14px}
+  .toolbar .g-modes .modes-app button.on{background:var(--copper);color:#fff;box-shadow:none}
+  .g-outils{left:0;right:0;bottom:0;height:var(--h-outils);padding:0 calc(env(safe-area-inset-right) + 4px) env(safe-area-inset-bottom) calc(env(safe-area-inset-left) + 4px);
+    background:var(--panel);border-top:1px solid var(--line);justify-content:space-around;gap:0}
+  .g-outils button{flex:1;flex-direction:column;gap:3px;min-height:0;height:100%;padding:4px 2px;border-radius:0;background:transparent;font:500 11px var(--body);color:var(--muted)}
+  .toolbar .g-outils button .txt{display:block}
+  .g-outils button .ic{width:22px;height:22px}
+  .toolbar .g-outils button.on{background:transparent;color:var(--copper-strong)}
+  .g-outils button:disabled{opacity:.35}
+  .menu-barre{z-index:22}
+  #modes,#barreRot{top:calc(var(--haut) + 52px);right:auto;left:8px}
   .catalogue .tuiles{grid-template-columns:repeat(4,1fr)}
-  .replier{display:inline-block}
-  .panel.replie .contenu{display:none}
-  .panel.replie .replier{transform:rotate(180deg)}
-  h1{font-size:19px}
+  .entete h1,.replier{display:none}
   button{padding:10px 10px;min-height:40px}
   select,input[type=text]{font-size:16px}
   #note{font-size:13px;padding:7px 10px;transform:none;max-width:none}
 }
-/* Portrait : le panneau est un tiroir au bas de l'écran. */
+/* Portrait : le panneau est un tiroir qu'on tire avec la poignée (3 hauteurs : onglets, moitié, plein). */
 @media (max-width:760px) and (orientation:portrait){
-  .panel{top:auto;left:0;right:0;bottom:0;width:100%;max-height:52dvh;border-radius:14px 14px 0 0;
-    padding:10px 12px calc(10px + env(safe-area-inset-bottom));gap:8px;box-shadow:0 -4px 18px rgb(0 0 0 / .15)}
-  #note{left:8px;right:8px;top:auto;bottom:calc(var(--hauteur-panneau, 60px) + 8px)}
+  .panel{top:auto;left:0;right:0;bottom:var(--h-outils);width:100%;height:var(--h-tiroir,46dvh);max-height:none;border-radius:16px 16px 0 0;
+    padding:0 12px 8px;gap:6px;overflow:hidden;box-shadow:0 -4px 18px rgb(0 0 0 / .14);border-bottom:0;transition:height .22s ease}
+  .panel.glisse{transition:none}
+  .entete{display:block}
+  .poignee{display:flex;justify-content:center;align-items:center;height:22px;margin:0 -12px;cursor:grab;touch-action:none}
+  .poignee span{width:40px;height:5px;border-radius:3px;background:var(--line)}
+  .contenu{flex:1;min-height:0;overflow:auto;overscroll-behavior:contain;padding-bottom:6px}
+  .onglets{position:sticky;top:0;z-index:2}
+  #note{left:8px;right:8px;top:auto;bottom:calc(var(--h-outils) + var(--hauteur-panneau, 60px) + 8px)}
 }
-/* Paysage : le panneau est à droite, sur toute la hauteur. */
+/* Paysage : le panneau est à droite, entre la barre du haut et les outils du bas. */
 @media (max-height:520px) and (orientation:landscape){
-  .panel{top:6px;right:calc(env(safe-area-inset-right) + 6px);bottom:6px;width:270px;padding:8px 10px;gap:8px}
-  .panel.replie{bottom:auto}
-  .toolbar{right:290px}
-  #note{left:8px;right:290px;top:auto;bottom:8px}
+  .panel{top:calc(var(--haut) + 50px);right:calc(env(safe-area-inset-right) + 6px);bottom:calc(var(--h-outils) + 6px);width:270px;padding:8px 10px;gap:8px}
+  .g-outils{right:auto;width:min(420px,60vw);left:calc(env(safe-area-inset-left) + 6px);bottom:6px;height:52px;padding:0 4px;border:1px solid var(--line);border-radius:14px;box-shadow:0 2px 8px rgb(0 0 0 / .1)}
+  .g-vue{right:calc(env(safe-area-inset-right) + 284px)}
+  .catalogue .tuiles{grid-template-columns:repeat(3,minmax(0,1fr))}
+  .contenu{min-width:0}
+  .onglets button{font-size:12px}
+  #note{left:8px;right:290px;top:auto;bottom:66px}
 }
 /* iOS 27 floute le haut des PWA installées : une bande opaque de 11 px tout en haut (avec la barre d'état « default »)
    l'en empêche. Seulement en mode app installée ; le contenu est décalé d'autant. */
@@ -251,10 +280,30 @@ label.check{display:flex;gap:8px;align-items:center;color:var(--fg);font-size:14
 
   <iframe id="cadreCintreuse" title="Cintreuse à tubes 3D" hidden></iframe>
   <div class="toolbar" role="toolbar" aria-label="Outils">
-    <div class="modes-app" role="tablist" aria-label="Mode">
-      <button role="tab" data-mode-app="montage" class="on" aria-selected="true" title="Monter tuyaux, tubes et raccords">Montage</button>
-      <button role="tab" data-mode-app="cintrage" aria-selected="false" title="Cintrer un tube à la cintreuse">Cintrage</button>
+    <div class="g g-modes">
+      <div class="modes-app" role="tablist" aria-label="Mode">
+        <button role="tab" data-mode-app="montage" class="on" aria-selected="true" title="Monter tuyaux, tubes et raccords">Montage</button>
+        <button role="tab" data-mode-app="cintrage" aria-selected="false" title="Cintrer un tube à la cintreuse">Cintrage</button>
+      </div>
     </div>
+    <div class="g g-fichier">
+      <span class="sep"></span>
+      <button data-menu="menuFichier" aria-haspopup="menu" title="Fichier : nouveau, ouvrir, enregistrer, importer, exporter"><svg class="ic" aria-hidden="true"><use href="#i-menu"/></svg><span class="txt"> Fichier</span></button>
+    </div>
+    <div class="g g-outils">
+      <span class="sep"></span>
+      <button data-outil="main" class="on" title="Sélection (S) : choisis une sortie ou une pièce"><svg class="ic" aria-hidden="true"><use href="#i-pointeur"/></svg><span class="txt"> Sélection</span></button>
+      <button data-outil="mesure" title="Mesure (M) : clique deux points repères"><svg class="ic" aria-hidden="true"><use href="#i-regle"/></svg><span class="txt"> Mesure</span></button>
+      <button id="btnFermer" title="Fermer une boucle (B) : clique deux sorties à relier"><svg class="ic" aria-hidden="true"><use href="#i-boucle"/></svg><span class="txt"> Boucle</span></button>
+      <span class="sep"></span>
+      <button id="btnAnnuler" title="Annuler (Ctrl+Z)" disabled><svg class="ic" aria-hidden="true"><use href="#i-annuler"/></svg><span class="txt opt"> Annuler</span></button>
+      <button id="btnRetablir" title="Rétablir (Ctrl+Y)" disabled><svg class="ic" aria-hidden="true"><use href="#i-retablir"/></svg><span class="txt opt"> Rétablir</span></button>
+    </div>
+    <div class="g g-vue">
+      <span class="sep"></span>
+      <button data-menu="menuVue" aria-haspopup="menu" title="Vue : 3D, face, dessus, côté, coupe, orthogonale"><svg class="ic" aria-hidden="true"><use href="#i-oeil"/></svg><span class="txt"> Vue</span><svg class="ic petit" aria-hidden="true"><use href="#i-chevron"/></svg></button>
+    </div>
+  </div>
     <span class="sep sep-mode"></span>
     <button data-menu="menuFichier" aria-haspopup="menu" title="Fichier : nouveau, ouvrir, enregistrer, importer, exporter"><svg class="ic" aria-hidden="true"><use href="#i-menu"/></svg><span class="txt"> Fichier</span></button>
     <span class="sep"></span>
@@ -314,10 +363,11 @@ label.check{display:flex;gap:8px;align-items:center;color:var(--fg);font-size:14
     <button role="menuitem" data-action="fiche"><svg class="ic" aria-hidden="true"><use href="#i-info"/></svg><span>Fiche de la pièce</span></button>
     <button role="menuitem" data-action="supprimer" class="danger"><svg class="ic" aria-hidden="true"><use href="#i-poubelle"/></svg><span>Supprimer</span> <kbd>Suppr</kbd></button>
   </div>
-  <p id="note">Touche une pièce dans le catalogue pour commencer le montage.</p>
+  <p id="note" role="status" aria-live="polite"></p>
 
   <aside class="panel">
     <div class="entete">
+      <div class="poignee" id="poignee" role="button" tabindex="0" aria-label="Agrandir ou réduire le panneau"><span></span></div>
       <h1>Conduits 3D</h1>
       <button id="btnPanneau" class="replier" aria-expanded="true" aria-controls="contenuPanneau" title="Replier ou ouvrir le panneau"><svg class="ic" aria-hidden="true"><use href="#i-chevron"/></svg></button>
     </div>

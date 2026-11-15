@@ -56,7 +56,11 @@ export function creerScene(canvas) {
     const panneau = document.querySelector('.panel');
     let dx = 0, dy = 0;
     if (panneau) {
-      if (mobile()) dy = Math.min(panneau.offsetHeight, h * 0.6) / 2;
+      if (mobile()) {
+        // Visible : entre la barre du haut (~58 px) et le tiroir + la barre d'outils du bas.
+        const outils = document.querySelector('.g-outils')?.offsetHeight || 0;
+        dy = (Math.min(panneau.offsetHeight + outils, h * 0.75) - 58) / 2;
+      }
       else if (w > 700) dx = (panneau.offsetWidth + 12) / 2;
     }
     for (const c of [camera, ortho]) {

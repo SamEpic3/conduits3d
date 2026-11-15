@@ -34,9 +34,35 @@ const historique = [];
 // ---------------------------------------------------------------------------
 // Messages
 
-function note(texte, erreur = false) {
-  $('note').textContent = texte;
-  $('note').classList.toggle('erreur', erreur);
+// Messages : ils apparaissent puis s'effacent seuls (les erreurs restent plus longtemps).
+// garder : reste affiché (une action attend l'élève) ; details : texte technique, affiché sur demande.
+let minuterieNote = null;
+function note(texte, erreur = false, { garder = false, details = null } = {}) {
+  const n = $('note');
+  n.replaceChildren();
+  const t = document.createElement('span');
+  t.className = 'texte';
+  t.textContent = texte;
+  n.append(t);
+  clearTimeout(minuterieNote);
+  if (details) {
+    const b = Object.assign(document.createElement('button'), { type: 'button', className: 'lien', textContent: 'Détails' });
+    b.onclick = () => {
+      const d = Object.assign(document.createElement('span'), { className: 'details', textContent: details });
+      b.replaceWith(d);
+      clearTimeout(minuterieNote);
+    };
+    n.append(b);
+  }
+  const x = Object.assign(document.createElement('button'), { type: 'button', className: 'fermer-note', title: 'Fermer' });
+  x.innerHTML = '<svg class="ic" aria-hidden="true"><use href="#i-x"/></svg>';
+  x.setAttribute('aria-label', 'Fermer le message');
+  x.onclick = () => { clearTimeout(minuterieNote); n.classList.remove('visible'); };
+  n.append(x);
+  n.classList.toggle('erreur', erreur);
+  n.classList.add('visible');
+  if (!garder) minuterieNote = setTimeout(() => n.classList.remove('visible'),
+    Math.min(9000, 2800 + texte.length * 40) * (erreur ? 1.6 : 1));
 }
 
 const nomPiece = p => `${CATALOGUE[p.type].nom}${CATALOGUE[p.type].longueur ? ` ${fraction(p.longueur)} po` : ''} (${p.taille}${p.tailleB ? ` × ${p.tailleB}` : ''} po)`;
@@ -318,6 +344,7 @@ function choisirOnglet(o) {
   document.querySelectorAll('[data-panneau]').forEach(s => { s.hidden = s.dataset.panneau !== o; });
   const panneau = document.querySelector('.panel');
   if (panneau.classList.contains('replie')) { panneau.classList.remove('replie'); $('btnPanneau').setAttribute('aria-expanded', 'true'); }
+  if (typeof ouvrirTiroir === 'function') ouvrirTiroir();
 }
 document.querySelectorAll('[data-onglet]').forEach(b => b.onclick = () => choisirOnglet(b.dataset.onglet));
 
@@ -418,7 +445,7 @@ function demarrerFermeture() {
   fermeture = { premiere: null };
   $('btnFermer').classList.add('on');
   rafraichir();
-  note('Fermer une boucle : clique deux raccords face à face (l\'app ajoute le tuyau ou le tube), ou le bout libre d\'un tube puis le raccord où il doit entrer. Échap pour annuler.');
+  note('Fermer une boucle : clique deux raccords face à face (l\'app ajoute le tuyau ou le tube), ou le bout libre d\'un tube puis le raccord où il doit entrer. Échap pour annuler.', false, { garder: true });
 }
 
 function arreterFermeture() {
@@ -431,7 +458,7 @@ function clicFermeture(s) {
   if (!fermeture.premiere) {
     fermeture.premiere = s;
     rafraichir();
-    note('Première sortie choisie. Clique maintenant le raccord (ou le bout) à relier.');
+    note('Première sortie choisie. Clique maintenant le raccord (ou le bout) à relier.', false, { garder: true });
     return;
   }
   const a = fermeture.premiere;
@@ -450,12 +477,15 @@ function clicFermeture(s) {
   if (r.joint) {
     const e = r.ecart, po = v => `${Math.abs(v).toFixed(3).replace('.', ',')} po`;
     const e0 = r.ecartInitial || e;
-    return note(`Boucle fermée : le bout arrive dans le raccord (écart ${po(e0.axial)} en profondeur, ${po(e0.lateral)} sur le côté, ${e0.angle.toFixed(1).replace('.', ',')}°).`
-      + (r.force ? ` Le tube a été forcé de ${po(r.force)} sur le côté pour entrer dans le raccord (un tube recuit plie un peu, comme en atelier).` : '')
-      + (r.rotation ? ` La pièce a été tournée de ${r.rotation.toFixed(1).replace('.', ',')}° autour de son joint pour s'aligner.` : '')
-      + (r.correction ? ` Le tube a été ${r.correction > 0 ? 'allongé' : 'raccourci'} de ${po(r.correction)} pour arriver au fond du raccord : longueur développée ${fmtPo(p.cintrage.longueur)}.` : ''));
+    const ajuste = [r.correction && `${r.correction > 0 ? 'allongé' : 'raccourci'} de ${po(r.correction)}`, r.force && `forcé de ${po(r.force)} de côté`].filter(Boolean);
+    return note(`Boucle fermée.${ajuste.length ? ` Tube ${ajuste.join(' et ')} pour entrer pile dans le raccord.` : ''}`, false, {
+      details: `Écart avant ajustement : ${po(e0.axial)} en profondeur, ${po(e0.lateral)} sur le côté, ${e0.angle.toFixed(1).replace('.', ',')}°.`
+        + (r.force ? ' Un tube recuit plie un peu : on le force pour l\'emboîter, comme en atelier.' : '')
+        + (r.rotation ? ` Pièce tournée de ${r.rotation.toFixed(1).replace('.', ',')}° autour de son joint pour s'aligner.` : '')
+        + (p.cintrage ? ` Longueur développée : ${fmtPo(p.cintrage.longueur)}.` : '') });
   }
-  note(`Boucle fermée avec ${r.type === 'mamelon' ? 'un tuyau' : 'un tube'} de ${fmtPo(r.longueur)} (longueur de coupe : distance entre les faces ${fmtPo(r.distance)} + les deux engagements).`);
+  note(`Boucle fermée avec ${r.type === 'mamelon' ? 'un tuyau' : 'un tube'} de ${fmtPo(r.longueur)}.`, false, {
+    details: `Longueur de coupe = distance entre les faces (${fmtPo(r.distance)}) + les deux engagements.` });
   void p;
 }
 
@@ -970,7 +1000,7 @@ function recevoirTube(tube) {
   const portTube = cible && montage.portMonde(montage.piece(cible.id), cible.port).type.startsWith('tube');
   if (!montage.pieces.length || portTube) return poserTube(d);
   tubeEnAttente = d;
-  note('Tube cintré prêt : clique la sortie de raccord de tube (anneau) où le poser. Échap pour l\'oublier.');
+  note('Tube cintré prêt : clique la sortie de raccord de tube (anneau) où le poser. Échap pour l\'oublier.', false, { garder: true });
   rafraichir();
 }
 
@@ -981,6 +1011,58 @@ function poserTube(d) {
     if (pm.type.startsWith('tube')) $('selTaille').value = pm.taille;
   }
   importerTube({ text: async () => JSON.stringify({ ...d, format: 'tube-cintre' }) });
+}
+
+// ---------------------------------------------------------------------------
+// Tiroir (téléphone en portrait) : on le tire par la poignée ; trois hauteurs (onglets, moitié, plein écran).
+
+var portrait = matchMedia('(max-width:760px) and (orientation:portrait)');
+var tiroir = { etat: 'moitie' };
+function hauteursTiroir() {
+  const H = $('stage').clientHeight, outils = document.querySelector('.g-outils').offsetHeight;
+  const onglets = document.querySelector('.onglets').offsetHeight;
+  return { replie: 22 + onglets + 16, moitie: Math.round(H * 0.44), plein: H - outils - 62 };
+}
+function placerTiroir(etat, anime = true) {
+  const panneau = document.querySelector('.panel');
+  if (!portrait.matches) { panneau.style.removeProperty('--h-tiroir'); return; }
+  tiroir.etat = etat;
+  panneau.classList.toggle('glisse', !anime);
+  panneau.style.setProperty('--h-tiroir', hauteursTiroir()[etat] + 'px');
+  $('poignee').setAttribute('aria-expanded', String(etat !== 'replie'));
+}
+function ouvrirTiroir() { if (portrait.matches && tiroir.etat === 'replie') placerTiroir('moitie'); }
+portrait.addEventListener('change', () => placerTiroir(tiroir.etat, false));
+addEventListener('resize', () => placerTiroir(tiroir.etat, false));
+{
+  let tire = null;
+  const p = $('poignee'), panneau = document.querySelector('.panel');
+  p.addEventListener('pointerdown', e => {
+    if (!portrait.matches) return;
+    tire = { y: e.clientY, h0: panneau.offsetHeight, bouge: false };
+    panneau.classList.add('glisse');
+    try { p.setPointerCapture(e.pointerId); } catch { /* événement simulé */ }
+  });
+  p.addEventListener('pointermove', e => {
+    if (!tire) return;
+    const dy = tire.y - e.clientY;
+    if (Math.abs(dy) > 4) tire.bouge = true;
+    const h = hauteursTiroir();
+    panneau.style.setProperty('--h-tiroir', Math.max(h.replie, Math.min(h.plein, tire.h0 + dy)) + 'px');
+  });
+  const fin = () => {
+    if (!tire) return;
+    const bouge = tire.bouge;
+    tire = null;
+    if (!bouge) return placerTiroir(tiroir.etat === 'replie' ? 'moitie' : 'replie');
+    const h = hauteursTiroir(), actuelle = panneau.offsetHeight;
+    const plus = Object.entries(h).sort((a, b) => Math.abs(a[1] - actuelle) - Math.abs(b[1] - actuelle))[0][0];
+    placerTiroir(plus);
+  };
+  p.addEventListener('pointerup', fin);
+  p.addEventListener('pointercancel', fin);
+  p.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); placerTiroir(tiroir.etat === 'replie' ? 'moitie' : tiroir.etat === 'moitie' ? 'plein' : 'replie'); } });
+  placerTiroir('moitie', false);
 }
 
 // ---------------------------------------------------------------------------
@@ -1224,4 +1306,5 @@ document.addEventListener('keydown', e => {
 
 rafraichir();
 $('chargement').hidden = true;
+note(montage.pieces.length ? 'Montage prêt.' : 'Touche une pièce dans le catalogue pour commencer le montage.');
 window.__conduits = { modifierCintrage, cercles, choisirManip, choisirOnglet, retablir, annuler, ouvrirMenu, materiel, catalogue, fleches, changerLongueur, ouvrirTexte, importerTexte: t => importerTube({ text: async () => t }), vue, montage, mesures, THREE, ajouter, choisirOutil, tourner, $, detacher, deplacer: (id, axe, d) => { selection = id; rafraichir(); const etat = montage.debutDeplacement(id); memoriser(); glisse = { axe, etat, d, candidat: null }; montage.deplacer(etat, AXES[axe].dir.clone().multiplyScalar(d)); glisse.candidat = montage.candidatAccrochage(etat.ids); finGlisse(); }, selectionner: id => { selection = id; rafraichir(); }, choisirSortie: (id, port) => { cible = { id, port }; rafraichir(); }, fermer: (a, b) => { demarrerFermeture(); clicFermeture(a); clicFermeture(b); } };

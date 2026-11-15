@@ -1,0 +1,30 @@
+// Téléphone : barre du haut, outils au bas, tiroir à trois hauteurs, messages qui s'effacent.
+import { chromium } from 'playwright';
+const nav = await chromium.launch({ executablePath: '/usr/bin/google-chrome', args: ['--use-angle=swiftshader','--enable-unsafe-swiftshader'] });
+const page = await nav.newPage({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true, deviceScaleFactor: 2 });
+page.setDefaultTimeout(150000);
+const err = []; page.on('pageerror', e => err.push(e.message));
+await page.addInitScript(() => localStorage.setItem('conduits3d-vignettes-2', '{}'));
+await page.goto('file:///home/claude/conduits3d/index.html');
+await page.waitForFunction(() => window.__conduits);
+await page.evaluate(() => { const C = window.__conduits, $ = C.$;
+  const aj = (t, L) => { $('selPiece').value = t; $('selPiece').onchange(); $('selTaille').value = '1/2'; if (L) $('txtLongueur').value = L; C.ajouter(); };
+  aj('coude90'); aj('mamelon', '4'); aj('te'); C.vue.cadrer(C.montage.groupe); });
+await page.waitForTimeout(500);
+await page.screenshot({ path: '/tmp/t/tel1.png' });
+const h = () => page.evaluate(() => document.querySelector('.panel').offsetHeight);
+const r = { moitie: await h() };
+const pg = await page.locator('#poignee').boundingBox();
+// tirer vers le haut : plein écran
+await page.evaluate(([x, y]) => { const p = document.getElementById('poignee'); const ev = (t, yy) => p.dispatchEvent(new PointerEvent(t, { clientX: x, clientY: yy, pointerId: 3, bubbles: true, pointerType: 'touch' }));
+  ev('pointerdown', y); ev('pointermove', y - 100); ev('pointermove', y - 300); ev('pointerup', y - 300); }, [pg.x + pg.width / 2, pg.y + pg.height / 2]);
+await page.waitForTimeout(400); r.plein = await h();
+await page.screenshot({ path: '/tmp/t/tel2.png' });
+await page.tap('#poignee'); await page.waitForTimeout(400); r.replie = await h();
+await page.screenshot({ path: '/tmp/t/tel3.png' });
+await page.tap('[data-onglet="materiel"]'); await page.waitForTimeout(400); r.onglet = await h();
+r.noteVisible = await page.evaluate(() => document.getElementById('note').classList.contains('visible'));
+await page.waitForTimeout(9500);
+r.noteApres = await page.evaluate(() => document.getElementById('note').classList.contains('visible'));
+console.log(JSON.stringify(r), err.join('\n') || 'ok');
+await nav.close();
