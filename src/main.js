@@ -376,6 +376,8 @@ function choisirOnglet(o) {
 document.querySelectorAll('[data-onglet]').forEach(b => b.onclick = () => {
   // Téléphone : toucher l'onglet déjà ouvert range le panneau.
   if (telephone.matches && b.dataset.onglet === onglet && !panneauRange()) return fermerPanneau();
+  // Toucher « Ajouter » panneau fermé : le catalogue s'ouvre en plein écran (il a besoin de place).
+  if (b.dataset.onglet === 'pieces' && portrait.matches && tiroir.etat === 'replie') placerTiroir('plein');
   choisirOnglet(b.dataset.onglet);
 });
 
@@ -1177,6 +1179,9 @@ addEventListener('resize', () => placerTiroir(tiroir.etat, false));
 // Boutons et clavier
 
 // ---------------------------------------------------------------------------
+// Fenêtres (export d'image, ajout d'une pièce) : un toucher en dehors les ferme.
+for (const d of ['dlgImage', 'dlgPiece']) $(d).addEventListener('click', e => { if (e.target === $(d)) $(d).close(); });
+
 // Ajout rapide : toucher une tuile ajoute la pièce tout de suite quand la grosseur va de soi
 // (celle de la sortie choisie). Sinon (première pièce, longueur à donner, plusieurs grosseurs
 // possibles), un petit formulaire s'ouvre.
@@ -1360,6 +1365,7 @@ $('btnImage').onclick = () => {
   $('imgMesures').disabled = !mesures.liste.length;
   $('imgMesures').checked = mesures.liste.length > 0;
   $('dlgImage').showModal();
+  $('btnTelecharger').focus({ preventScroll: true });   // pas le menu Vue : il s'ouvrait tout seul au téléphone
   apercuImage();
 };
 for (const id of ['imgVue', 'imgProjection', 'imgFormat', 'imgMesures', 'imgCoupe', 'imgFond']) $(id).onchange = apercuImage;
