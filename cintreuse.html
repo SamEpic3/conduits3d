@@ -1025,59 +1025,56 @@ function startDrag(kind,e,extra){
   stage.classList.add('dragging');
 }
 // ---------- Deux doigts : toujours déplacer / zoomer la vue ----------
-// Un doigt posé sur le tube ou le levier est gardé par l'appli (OrbitControls ne le voit pas). Si un 2e doigt
-// arrive, on annule ce qu'il faisait et on « présente » le 1er doigt à OrbitControls, pour qu'il ait les deux
-// doigts et fasse un vrai déplacement à deux doigts (sinon il recevait les mouvements d'un doigt inconnu
-// et la vue sautait d'un point de vue à l'autre).
-const doigts=new Map(); let synthese=false, gesteMulti=false, dernierAppui=null;
+// OrbitControls voit TOUS les doigts posés sur la vue (on ne les lui cache plus) : il a donc toujours les deux
+// doigts et fait un vrai déplacement à deux doigts. Quand un seul doigt sert à l'appli (tube, levier, marqueur,
+// mesure), on coupe seulement la rotation de la vue (enableRotate) jusqu'à ce que tous les doigts soient levés.
+const doigts=new Map(); let gesteMulti=false, dernierAppui=null;
+const libererVue=()=>{ doigts.clear(); gesteMulti=false; controls.enableRotate=true; };
+function garderDoigt(e){
+  if(e.pointerType==='touch') controls.enableRotate=false;   // OrbitControls garde le doigt, mais ne tourne pas
+  else e.stopPropagation();
+  e.preventDefault();
+}
 stage.addEventListener('pointerdown',e=>{
-  if(e.pointerType!=='touch'||synthese||e.target!==cv) return;
+  if(e.pointerType!=='touch'||e.target!==cv) return;
   // Un doigt dont on n'a jamais reçu le « relâché » (iOS en perd parfois, ex. menu déroulant natif)
   // ne doit pas faire croire à un geste à deux doigts : on oublie ceux qui n'ont pas bougé depuis 1,5 s.
   const now=performance.now();
   for(const [id,d] of doigts) if(now-d.t>1500){ doigts.delete(id); if(drag&&drag.id===id) cancelDrag(); }
+  if(!doigts.size) controls.enableRotate=true;
   gesteMulti=doigts.size>=1;
-  doigts.set(e.pointerId,{x:e.clientX,y:e.clientY,cache:true,t:now});
-  if(!gesteMulti){ dernierAppui={t:performance.now(),avaitPreview:!!mPreview}; return; }
+  doigts.set(e.pointerId,{t:now});
+  if(!gesteMulti){ dernierAppui={t:now,avaitPreview:!!mPreview}; return; }
   if(drag) cancelDrag();
-  if(mPreview&&dernierAppui&&!dernierAppui.avaitPreview&&performance.now()-dernierAppui.t<600){ mPreview=null; hideBubble(); renderAnnot(); req(); }
-  for(const [id,d] of doigts) if(d.cache&&id!==e.pointerId){
-    d.cache=false; synthese=true;
-    try{ cv.dispatchEvent(new PointerEvent('pointerdown',{pointerId:id,pointerType:'touch',isPrimary:true,clientX:d.x,clientY:d.y,pageX:d.x,pageY:d.y,button:0,buttons:1,bubbles:true,cancelable:true})); }
-    finally{ synthese=false; }
-  }
+  if(mPreview&&dernierAppui&&!dernierAppui.avaitPreview&&now-dernierAppui.t<600){ mPreview=null; hideBubble(); renderAnnot(); req(); }
 },true);
-cv.addEventListener('pointerdown',e=>{ const d=doigts.get(e.pointerId); if(d) d.cache=false; },true);
-stage.addEventListener('pointermove',e=>{
-  const d=doigts.get(e.pointerId); if(!d) return; d.x=e.clientX; d.y=e.clientY; d.t=performance.now();
-  if(d.cache&&!(drag&&drag.id===e.pointerId)&&e.target===cv) e.stopPropagation();   // doigt inconnu d'OrbitControls : on ne lui passe pas ses mouvements
-},true);
-const leverDoigt=e=>{ doigts.delete(e.pointerId); if(!doigts.size) gesteMulti=false; };
+stage.addEventListener('pointermove',e=>{ const d=doigts.get(e.pointerId); if(d) d.t=performance.now(); },true);
+const leverDoigt=e=>{ doigts.delete(e.pointerId); if(!doigts.size) libererVue(); };
 addEventListener('pointerup',leverDoigt,true); addEventListener('pointercancel',leverDoigt,true);
 // Les événements tactiles disent exactement combien de doigts restent : on s'y fie pour tout remettre à zéro.
-const finTouches=e=>{ if(e.touches.length===0){ doigts.clear(); gesteMulti=false; } };
+const finTouches=e=>{ if(e.touches.length===0) libererVue(); };
 addEventListener('touchend',finTouches,{capture:true,passive:true}); addEventListener('touchcancel',finTouches,{capture:true,passive:true});
-addEventListener('blur',()=>{ doigts.clear(); gesteMulti=false; });
+addEventListener('blur',libererVue);
 stage.addEventListener('pointerdown',e=>{
-  if(synthese||gesteMulti) return;
+  if(gesteMulti) return;
   if(e.target!==cv||(e.pointerType==='mouse'&&e.button!==0)) return;
   if(drag){ if(e.pointerType==='touch') cancelDrag(); return; }
   if(tool==='hand'){
     if(busy) return;
     const k=pick(e);
     if(k==='lever'){
-      e.stopPropagation(); e.preventDefault();
+      garderDoigt(e);
       const dz=Math.abs(rayAt(e).ray.direction.z), mode=dz>0.25?'plane':'screen';
       startDrag('lever',e,{mode,last:leverAng(e,mode)}); return;
     }
     if(k==='tube'&&present){
-      e.stopPropagation(); e.preventDefault();
+      garderDoigt(e);
       if(lever>=1){note('Relève d\'abord le levier pour libérer le tube.',true); return;}
       commit(); startDrag('tube',e,{p0:p,psi0:psi,lock:null}); return;
     }
     return;   // sinon : OrbitControls tourne la vue
   }
-  e.stopPropagation(); e.preventDefault();
+  garderDoigt(e);
   if(tool==='marker'){ if(!present||busy){note('Insère d\'abord un tube.',true); return;} startDrag('mark',e); updateMark(e); return; }
   if(tool==='measure'){
     const sp=snapPoint(e);
@@ -1573,7 +1570,7 @@ if(!INTEGRE && matchMedia('(pointer: fine)').matches) $('len').focus({preventScr
 window.__cint={get state(){return {present,L,p,psi,lever,bends,cur,marks,measures};},
   setLever:v=>{lever=v; if(present){const lim=bendLimit(); if(lim.max>0.5){ if(!cur) cur={s0:p,a:0,th:psi}; cur.a=Math.max(cur.a,Math.min(v,lim.max)); }} render(); sync();},
   setP:v=>{commit(); p=v; render();},
-  camera, controls, pickAt:(x,y)=>pick({clientX:x,clientY:y}), get drag(){return drag;}, get doigts(){return [...doigts].map(([k,v])=>k+(v.cache?"c":""));}};
+  camera, controls, pickAt:(x,y)=>pick({clientX:x,clientY:y}), get drag(){return drag;}, get doigts(){return [...doigts.keys()];}};
 </script>
 <script>
 // App installable (PWA) : le service worker garde tout en cache pour l'utiliser sans Internet

@@ -33,4 +33,15 @@ console.log('vide puis tube', await essai(pts.vide, pts.tube));
 console.log('tube puis vide', await essai(pts.tube, pts.vide));
 await page.click('[data-tool="marker"]'); console.log('avant', await page.evaluate(()=>window.__cint.doigts)); await page.evaluate(()=>{ window.__log=[]; const cv=document.getElementById('cv'); for(const t of ['pointerdown','pointermove']) cv.addEventListener(t,e=>window.__log.push(t[7]+e.pointerId),false); });
 console.log('marqueur', await essai(pts.tube, pts.vide), await page.evaluate(()=>[window.__cint.state.marks.length, window.__log.slice(0,12).join(' '), window.__cint.doigts]));
+// un doigt sur le vide : la vue doit encore tourner ; un doigt sur le tube : le tube glisse, la vue ne tourne pas
+await page.tap('[data-tool="hand"]');
+async function unDoigt(p){ const a=await etat(), p0=await page.evaluate(()=>window.__cint.state.p);
+  await cdp.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[{x:p[0],y:p[1]}]});
+  for(let i=1;i<=10;i++){ await cdp.send('Input.dispatchTouchEvent',{type:'touchMove',touchPoints:[{x:p[0]-6*i,y:p[1]-6*i}]}); await page.waitForTimeout(16); }
+  await cdp.send('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[]}); await page.waitForTimeout(100);
+  const b=await etat(); return { rotation:+Math.hypot(...b.dir.map((v,i)=>v-a.dir[i])).toFixed(3), dp:+((await page.evaluate(()=>window.__cint.state.p))-p0).toFixed(3), psi:await page.evaluate(()=>window.__cint.state.psi), note:await page.evaluate(()=>document.getElementById('note').textContent) }; }
+console.log('1 doigt vide', await unDoigt(pts.vide));
+const tube2 = await page.evaluate(() => { for (let y=80; y<420; y+=3) for (let x=20; x<370; x+=3) if(window.__cint.pickAt(x,y)==='tube') return [x,y]; });
+console.log('levier', await page.evaluate(()=>window.__cint.state.lever), 'tube à', tube2);
+console.log('1 doigt tube', await unDoigt(tube2));
 console.log('erreurs', err); await nav.close();

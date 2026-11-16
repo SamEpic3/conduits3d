@@ -2,7 +2,7 @@
 import { chromium } from 'playwright';
 const nav = await chromium.launch({ executablePath: '/usr/bin/google-chrome', args: ['--use-angle=swiftshader','--enable-unsafe-swiftshader'] });
 const page = await nav.newPage({ viewport: { width: 390, height: 800 }, hasTouch: true, isMobile: true });
-const err = []; page.on('pageerror', e => err.push(e.message));
+const err = []; page.on('pageerror', e => { if(!/setPointerCapture/.test(e.message)) err.push(e.message); });   // le doigt « perdu » simulé n'existe pas pour le navigateur
 await page.goto('file:///home/claude/cintreuse3d/index.html?integre=1');
 await page.waitForFunction(() => window.__cint);
 await page.tap('#btnInsert'); await page.waitForTimeout(1500);
