@@ -1031,9 +1031,13 @@ function startDrag(kind,e,extra){
 // et la vue sautait d'un point de vue à l'autre).
 const doigts=new Map(); let synthese=false, gesteMulti=false, dernierAppui=null;
 stage.addEventListener('pointerdown',e=>{
-  if(e.pointerType!=='touch'||synthese) return;
+  if(e.pointerType!=='touch'||synthese||e.target!==cv) return;
+  // Un doigt dont on n'a jamais reçu le « relâché » (iOS en perd parfois, ex. menu déroulant natif)
+  // ne doit pas faire croire à un geste à deux doigts : on oublie ceux qui n'ont pas bougé depuis 1,5 s.
+  const now=performance.now();
+  for(const [id,d] of doigts) if(now-d.t>1500){ doigts.delete(id); if(drag&&drag.id===id) cancelDrag(); }
   gesteMulti=doigts.size>=1;
-  doigts.set(e.pointerId,{x:e.clientX,y:e.clientY,cache:true});
+  doigts.set(e.pointerId,{x:e.clientX,y:e.clientY,cache:true,t:now});
   if(!gesteMulti){ dernierAppui={t:performance.now(),avaitPreview:!!mPreview}; return; }
   if(drag) cancelDrag();
   if(mPreview&&dernierAppui&&!dernierAppui.avaitPreview&&performance.now()-dernierAppui.t<600){ mPreview=null; hideBubble(); renderAnnot(); req(); }
@@ -1045,11 +1049,15 @@ stage.addEventListener('pointerdown',e=>{
 },true);
 cv.addEventListener('pointerdown',e=>{ const d=doigts.get(e.pointerId); if(d) d.cache=false; },true);
 stage.addEventListener('pointermove',e=>{
-  const d=doigts.get(e.pointerId); if(!d) return; d.x=e.clientX; d.y=e.clientY;
+  const d=doigts.get(e.pointerId); if(!d) return; d.x=e.clientX; d.y=e.clientY; d.t=performance.now();
   if(d.cache&&!(drag&&drag.id===e.pointerId)&&e.target===cv) e.stopPropagation();   // doigt inconnu d'OrbitControls : on ne lui passe pas ses mouvements
 },true);
 const leverDoigt=e=>{ doigts.delete(e.pointerId); if(!doigts.size) gesteMulti=false; };
 addEventListener('pointerup',leverDoigt,true); addEventListener('pointercancel',leverDoigt,true);
+// Les événements tactiles disent exactement combien de doigts restent : on s'y fie pour tout remettre à zéro.
+const finTouches=e=>{ if(e.touches.length===0){ doigts.clear(); gesteMulti=false; } };
+addEventListener('touchend',finTouches,{capture:true,passive:true}); addEventListener('touchcancel',finTouches,{capture:true,passive:true});
+addEventListener('blur',()=>{ doigts.clear(); gesteMulti=false; });
 stage.addEventListener('pointerdown',e=>{
   if(synthese||gesteMulti) return;
   if(e.target!==cv||(e.pointerType==='mouse'&&e.button!==0)) return;
