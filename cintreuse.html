@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="fr"><head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
 <title>Simulateur de cintreuse 400 – 3D</title>
 <meta name="description" content="Simulateur de cintreuse à levier en 3D pour les étudiants en électromécanique.">
 <meta name="theme-color" content="#1f2327">
@@ -77,7 +77,9 @@ body{background:var(--bg);color:var(--fg);font-family:var(--body);font-size:15px
   background:color-mix(in srgb,var(--panel) 94%,transparent);border:1px solid var(--line);font-size:14px;color:var(--fg);text-align:center;box-shadow:0 2px 8px rgb(0 0 0 / .08);transition:opacity .35s,transform .35s}
 .note:empty{display:none}
 .note.warn{color:var(--warn);border-color:var(--warn)}
-.note.gone{opacity:0;transform:translate(-50%,6px)}
+.note.gone{opacity:0;transform:translate(-50%,6px);pointer-events:none}
+/* Les lectures et les messages ne bloquent jamais les doigts : on touche la vue à travers */
+.hud,.note{pointer-events:none}
 .row{display:flex;gap:8px;flex-wrap:wrap}
 .row>*{flex:1}
 button{font:600 15px/1 var(--body);border-radius:8px;padding:11px 12px;cursor:pointer;border:1px solid var(--line);background:var(--panel);color:var(--fg);transition:background .15s,border-color .15s}
@@ -196,6 +198,9 @@ html.integre button:hover:not(:disabled){border-color:var(--line)}
 @media (hover:hover){html.integre button:hover:not(:disabled){border-color:var(--copper)}}
 html.integre body{-webkit-user-select:none;user-select:none;-webkit-touch-callout:none;-webkit-tap-highlight-color:transparent}
 html.integre input{-webkit-user-select:text;user-select:text}
+/* Pincer ne doit jamais zoomer la page : seulement la vue 3D (le panneau garde son défilement) */
+html.integre,html.integre body{touch-action:none;overscroll-behavior:none}
+html.integre .pbody{touch-action:pan-y}
 /* Téléphone debout : outils au bas, panneau en tiroir, Vue en rond en haut à droite */
 @media (max-width:760px) and (orientation:portrait){
   html.integre{--h-outils:calc(58px + env(safe-area-inset-bottom))}
@@ -1473,6 +1478,8 @@ note('Choisis la longueur du tube dans le panneau, puis insère-le.');
 
 // ===== Intégrée dans Conduits 3D : menu Vue, tiroir au téléphone, flottants au-dessus du tiroir =====
 if(INTEGRE){
+  // iOS : bloquer le zoom de page au pincer (Safari ignore user-scalable=no)
+  for(const t of ['gesturestart','gesturechange']) document.addEventListener(t,e=>e.preventDefault(),{passive:false});
   const tel=matchMedia('(max-width:760px) and (orientation:portrait)');
   const outilsBar=document.querySelector('.toolbar.tools'), pnl=$('panel');
   addEventListener('message',e=>{
