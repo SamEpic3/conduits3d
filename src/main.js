@@ -1014,7 +1014,7 @@ function choisirModeApp(m) {
 function envoyerDisposition() {
   if (!cintreusePrete || modeApp !== 'cintrage') return;
   const r = document.querySelector('.modes-app').getBoundingClientRect(), c = cadre.getBoundingClientRect();
-  cadre.contentWindow.postMessage({ type: 'conduits3d:disposition', droite: r.right - c.left }, '*');
+  cadre.contentWindow.postMessage({ type: 'conduits3d:disposition', droite: r.right - c.left, version: $('menuFichier').querySelector('.version')?.textContent }, '*');
 }
 addEventListener('resize', () => requestAnimationFrame(envoyerDisposition));
 document.querySelectorAll('[data-mode-app]').forEach(b => b.onclick = () => {

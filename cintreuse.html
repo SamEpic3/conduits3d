@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html lang="fr"><head>
 <meta charset="utf-8">
+<meta name="version" content="v12">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
 <title>Simulateur de cintreuse 400 – 3D</title>
 <meta name="description" content="Simulateur de cintreuse à levier en 3D pour les étudiants en électromécanique.">
@@ -189,6 +190,7 @@ html.integre .note{border-radius:12px;box-shadow:0 6px 20px rgb(0 0 0 / .14)}
 .menuvue{position:absolute;z-index:9;min-width:230px;display:grid;padding:5px;border-radius:11px;background:var(--panel);border:1px solid var(--line);box-shadow:0 10px 30px rgb(0 0 0 / .22);animation:apparaitre .16s ease-out}
 .menuvue button{border:0;background:transparent;text-align:left;padding:9px 10px;border-radius:7px;font-weight:500;font-size:14px}
 .menuvue button[aria-checked="true"]::after{content:"  ✓";color:var(--copper)}
+.menuvue .version{margin:6px 10px 3px;font:500 11px/1.2 var(--mono);color:var(--muted);opacity:.75}
 .menuvue hr{border:0;border-top:1px solid var(--line);margin:4px 2px}
 @media (min-width:761px) and (max-width:1320px){html.integre .toolbar.tools button>span{display:none}}
 .toolbar button.on,.toolbar button.on:hover:not(:disabled){background:var(--copper);color:#fff}
@@ -333,6 +335,7 @@ html.integre .seul-integre-flex:not([hidden]){display:flex!important}
     <hr>
     <button role="menuitemcheckbox" id="mvBender" aria-checked="false"><svg class="ic" aria-hidden="true"><use href="#i-oeil"/></svg>Masquer la cintreuse</button>
     <button role="menuitemcheckbox" id="mvLabels" aria-checked="false"><svg class="ic" aria-hidden="true"><use href="#i-oeil"/></svg>Masquer les étiquettes des marques</button>
+    <p class="version" id="mvVersion"></p>
   </div>
   <div class="popover" id="markMenu" hidden>
     <h3>Mesurer à partir de</h3>
@@ -1484,10 +1487,11 @@ if(INTEGRE){
   const outilsBar=document.querySelector('.toolbar.tools'), pnl=$('panel');
   addEventListener('message',e=>{
     const m=e.data; if(!m||e.source!==parent) return;
-    if(m.type==='conduits3d:disposition'){ document.documentElement.style.setProperty('--gauche-outils',Math.round(m.droite+8)+'px'); resize(); }
+    if(m.type==='conduits3d:disposition'){ if(m.version) $('mvVersion').textContent=m.version; document.documentElement.style.setProperty('--gauche-outils',Math.round(m.droite+8)+'px'); resize(); }
   });
   // --- Menu Vue (remplace les barres Vue et Zoom) ---
   const menu=$('menuVue');
+  $('mvVersion').textContent='Cintreuse '+document.querySelector('meta[name=version]').content;
   const majCoches=()=>{ $('mvBender').setAttribute('aria-checked',$('tglBender').getAttribute('aria-pressed')); $('mvLabels').setAttribute('aria-checked',$('tglLabels').getAttribute('aria-pressed')); };
   const ouvrirMenuVue=b=>{
     if(!menu.hidden){ menu.hidden=true; return; }

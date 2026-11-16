@@ -263,6 +263,7 @@ label.check{display:flex;gap:8px;align-items:center;color:var(--fg);font-size:14
 body.mode-cintrage .gizmo{display:none}
 @media (max-height:520px) and (orientation:landscape){.gizmo{bottom:66px;left:8px;width:60px;height:60px}}
 @media (max-width:760px) and (orientation:portrait){.gizmo{left:6px;width:62px;height:62px}}
+.menu .version{margin:6px 10px 3px;font:500 11px/1.2 var(--mono,ui-monospace,monospace);color:var(--muted,#888);opacity:.75;user-select:none}
 </style>
 <!--IMPORTMAP-->
 </head>
@@ -359,6 +360,7 @@ body.mode-cintrage .gizmo{display:none}
     <button role="menuitem" id="btnImporter" title="Poser un tube cintré exporté par la cintreuse 3D (fichier .json)"><svg class="ic" aria-hidden="true"><use href="#i-tube"/></svg><span>Importer un tube cintré…</span></button>
     <hr>
     <button role="menuitem" id="btnImage"><svg class="ic" aria-hidden="true"><use href="#i-image"/></svg><span>Exporter une image…</span></button>
+    <p class="version" title="Version de l'app : change à chaque mise à jour">Version __VERSION__ · cintreuse __VERSION_CINT__</p>
   </div>
   <div id="menuVue" class="menu menu-barre" role="menu" hidden>
     <button role="menuitem" data-vue="iso"><svg class="ic" aria-hidden="true"><use href="#i-cube"/></svg><span>3D (isométrique)</span></button>

@@ -22,7 +22,10 @@ const vendeur = {
 };
 const modules = fichiers('src').filter(p => p.endsWith('.js'));
 
-const gabarit = lire('src/index.html').toString();
+// Numéro de version affiché dans l'app : pris dans sw.js (conduits) et dans cintreuse.html (cintreuse)
+const vApp = /VERSION = 'conduits3d-v(\d+)'/.exec(lire('sw.js').toString())[1];
+const vCint = (/<meta name="version" content="v(\d+)">/.exec(lire('cintreuse.html').toString()) || [, '?'])[1];
+const gabarit = lire('src/index.html').toString().replaceAll('__VERSION__', vApp).replaceAll('__VERSION_CINT__', vCint);
 
 // Version autonome
 const imports = {};
