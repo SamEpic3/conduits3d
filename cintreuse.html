@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="fr"><head>
 <meta charset="utf-8">
-<meta name="version" content="v14">
+<meta name="version" content="v15">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
 <title>Simulateur de cintreuse 400 – 3D</title>
 <meta name="description" content="Simulateur de cintreuse à levier en 3D pour les étudiants en électromécanique.">
@@ -1333,7 +1333,6 @@ addEventListener('message',e=>{
 $('btnExport').onclick=()=>{
   if(!present){ note('Insère d\'abord un tube.',true); return; }
   const data=donneesTube();
-  if(INTEGRE){ $('btnPoser').click(); return; }
   const url=URL.createObjectURL(new Blob([JSON.stringify(data,null,1)],{type:'application/json'}));
   const a=document.createElement('a'); a.href=url; a.download='tube-cintre.json'; document.body.appendChild(a); a.click(); a.remove();
   setTimeout(()=>URL.revokeObjectURL(url),1000);
@@ -1582,7 +1581,7 @@ if(INTEGRE){
   placer('moitie',false);
   requestAnimationFrame(()=>{ placerFlottants(); resize(); });
 }
-if(INTEGRE){ $('btnExport').lastChild.textContent='Poser dans le montage'; parent.postMessage({type:'conduits3d:pret'},'*'); }
+if(INTEGRE){ parent.postMessage({type:'conduits3d:pret'},'*'); }
 if(!INTEGRE && matchMedia('(pointer: fine)').matches) $('len').focus({preventScroll:true});
 window.__cint={get state(){return {present,L,p,psi,lever,bends,cur,marks,measures};},
   setLever:v=>{lever=v; if(present){const lim=bendLimit(); if(lim.max>0.5){ if(!cur) cur={s0:p,a:0,th:psi}; cur.a=Math.max(cur.a,Math.min(v,lim.max)); }} render(); sync();},
