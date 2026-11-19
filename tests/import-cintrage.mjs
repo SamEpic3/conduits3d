@@ -1,0 +1,22 @@
+// Mode Cintrage : exporter un tube (avec marques), puis le réimporter pour continuer.
+import { chromium } from 'playwright';
+import { readFileSync, writeFileSync } from 'node:fs';
+const nav = await chromium.launch({ executablePath: '/usr/bin/google-chrome', args: ['--use-angle=swiftshader','--enable-unsafe-swiftshader'] });
+const page = await nav.newPage({ acceptDownloads: true }); const err=[]; page.on('pageerror',e=>err.push(e.message));
+await page.addInitScript(() => localStorage.setItem('conduits3d-vignettes-2', '{}'));
+await page.goto('file:///home/claude/conduits3d/index.html'); await page.waitForFunction(() => window.__conduits);
+await page.click('[data-mode-app="cintrage"]');
+const f = page.frameLocator('#cadreCintreuse'); await f.locator('#btnInsert').click(); await page.waitForTimeout(1500);
+const cadre = page.frames().find(fr => fr.url().includes('cintreuse.html'));
+await cadre.evaluate(() => { window.__cint.setLever(90); document.getElementById('btnMark').click(); });
+await f.locator('#tabRel').click();
+const [dl] = await Promise.all([page.waitForEvent('download'), f.locator('#btnExport').click()]);
+const txt = readFileSync(await dl.path(),'utf8'); writeFileSync('/tmp/t/tube.json', txt);
+const avant = await cadre.evaluate(() => ({ coudes: window.__cint.state.bends.length+(window.__cint.state.cur?1:0), marques: window.__cint.state.marks.length }));
+await cadre.evaluate(() => location.reload()); await page.waitForTimeout(2500);
+const cadre2 = page.frames().find(fr => fr.url().includes('cintreuse.html')); await cadre2.waitForFunction(() => window.__cint);
+console.log('après rechargement', await cadre2.evaluate(() => window.__cint.state.present));
+await f.locator('#fichierTube').setInputFiles('/tmp/t/tube.json'); await page.waitForTimeout(800);
+const apres = await cadre2.evaluate(() => ({ present: window.__cint.state.present, coudes: window.__cint.state.bends.length+(window.__cint.state.cur?1:0), marques: window.__cint.state.marks.length, note: document.getElementById('note').textContent }));
+console.log(avant, apres, JSON.parse(txt).reprise, err);
+await nav.close();

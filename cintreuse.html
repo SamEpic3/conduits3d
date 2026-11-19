@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="fr"><head>
 <meta charset="utf-8">
-<meta name="version" content="v15">
+<meta name="version" content="v16">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
 <title>Simulateur de cintreuse 400 – 3D</title>
 <meta name="description" content="Simulateur de cintreuse à levier en 3D pour les étudiants en électromécanique.">
@@ -291,6 +291,7 @@ html.integre .seul-integre-flex:not([hidden]){display:flex!important}
   <symbol id="i-oeil" viewBox="0 0 24 24"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></symbol>
   <symbol id="i-x" viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"/></symbol>
   <symbol id="i-coche" viewBox="0 0 24 24"><path d="m5 12.5 4.5 4.5L19 7"/></symbol>
+  <symbol id="i-ouvrir" viewBox="0 0 24 24"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v1"/><path d="M3 7v11a2 2 0 0 0 2 2h12.5a2 2 0 0 0 1.9-1.4L22 11H7.5a2 2 0 0 0-1.9 1.4L3 20"/></symbol>
   <symbol id="i-haut" viewBox="0 0 24 24"><path d="M12 19V5M6 11l6-6 6 6"/></symbol>
   <symbol id="i-bas" viewBox="0 0 24 24"><path d="M12 5v14M6 13l6 6 6-6"/></symbol>
   <symbol id="i-levier" viewBox="0 0 24 24"><path d="M5 19 17 5"/><circle cx="18" cy="4" r="2"/><path d="M3 21h8"/></symbol>
@@ -407,6 +408,7 @@ html.integre .seul-integre-flex:not([hidden]){display:flex!important}
             <input id="len" type="text" inputmode="decimal" autocomplete="off" value="12" aria-describedby="lenHelp">
           </div>
           <button class="primary wide" id="btnInsert"><svg class="ic" aria-hidden="true"><use href="#i-plus"/></svg>Insérer le tube</button>
+          <button class="wide" id="btnImport2" title="Reprendre un tube exporté plus tôt pour continuer le cintrage"><svg class="ic" aria-hidden="true"><use href="#i-ouvrir"/></svg>Importer un tube (.json)…</button>
         </section>
         <section id="secPos">
           <h2>Positionner</h2>
@@ -480,6 +482,8 @@ html.integre .seul-integre-flex:not([hidden]){display:flex!important}
           <h2>Exporter</h2>
           <p class="empty">Enregistre le tube cintré dans un fichier, pour le poser dans Conduits&nbsp;3D (Importer un tube cintré).</p>
           <button class="wide" id="btnExport"><svg class="ic" aria-hidden="true"><use href="#i-telecharger"/></svg>Exporter le tube (.json)</button>
+          <button class="wide" id="btnImport" title="Reprendre un tube exporté plus tôt pour continuer le cintrage"><svg class="ic" aria-hidden="true"><use href="#i-ouvrir"/></svg>Importer un tube (.json)…</button>
+          <input type="file" id="fichierTube" accept=".json,application/json" hidden>
         </section>
       </div>
     </div>
@@ -1310,7 +1314,31 @@ $('btnEffMesBarre').onclick=()=>{ if(measures.length) $('btnClearMeas').click();
 // Exporte le tube cintré (longueur et coudes) pour Conduits 3D.
 const INTEGRE=document.documentElement.classList.contains('integre');
 const donneesTube=()=>({format:'tube-cintre',version:1,source:'cintreuse3d',tube:'3/8',rayon:R,longueur:L,
-  coudes:allBends().map(b=>({s0:+b.s0.toFixed(4),a:+b.a.toFixed(3),th:+(((b.th%360)+360)%360).toFixed(3)}))});
+  coudes:allBends().map(b=>({s0:+b.s0.toFixed(4),a:+b.a.toFixed(3),th:+(((b.th%360)+360)%360).toFixed(3)})),
+  // Pour reprendre le cintrage plus tard : où en était le tube dans la cintreuse, et les marques
+  reprise:{p:+p.toFixed(4),psi:+psi.toFixed(3),markSeq,marques:marks.map(m=>({id:m.id,s:+m.s.toFixed(4),txt:m.txt,desc:m.desc}))}});
+// Charge un tube cintré (fichier exporté ou tube du montage) dans la cintreuse.
+function chargerTube(t,message){
+  pushHist('le chargement du tube');
+  const r=t.reprise||{};
+  restore({present:true,L:t.longueur,p:Number.isFinite(r.p)?Math.min(t.longueur,Math.max(0,r.p)):Math.min(3,Math.round(t.longueur/2/SNAP)*SNAP),
+    psi:Number.isFinite(r.psi)?r.psi:0,lever:0,markSeq:r.markSeq||0,
+    bends:t.coudes.map(b=>({s0:b.s0,a:b.a,th:b.th})),cur:null,
+    marks:(r.marques||[]).map(m=>({id:m.id,s:m.s,txt:m.txt,desc:m.desc})),measures:[],mref:{type:'A',id:null,dir:1}});
+  render(); sync(); fitView(true);
+  note(message||`Tube chargé : ${t.coudes.length} coude${t.coudes.length>1?'s':''}, ${fmtIn(t.longueur)}. Tu peux continuer le cintrage.`);
+}
+$('btnImport').onclick=()=>{ if(busy){ note('Attends la fin du mouvement en cours.',true); return; } $('fichierTube').value=''; $('fichierTube').click(); };
+$('btnImport2').onclick=()=>$('btnImport').click();
+$('fichierTube').onchange=async e=>{
+  const f=e.target.files[0]; if(!f) return;
+  try{
+    const t=JSON.parse(await f.text());
+    if(t.format!=='tube-cintre'||!Number.isFinite(t.longueur)||!Array.isArray(t.coudes)) throw new Error();
+    if(t.longueur<2||t.longueur>200) throw new Error();
+    chargerTube(t);
+  }catch{ note('Ce fichier n\'est pas un tube cintré exporté par la cintreuse (.json).',true); }
+};
 // Intégrée dans Conduits 3D : le tube passe directement au montage (sans fichier).
 $('btnPoser').onclick=()=>{
   if(!present){ note('Insère d\'abord un tube.',true); return; }
@@ -1322,11 +1350,8 @@ addEventListener('message',e=>{
   const m=e.data; if(!m||e.source!==parent) return;
   if(m.type==='conduits3d:charger'){
     // Reprend un tube déjà posé dans le montage pour modifier son cintrage.
-    const t=m.tube; pushHist('le chargement du tube');
-    restore({present:true,L:t.longueur,p:Math.min(3,Math.round(t.longueur/2/SNAP)*SNAP),psi:0,lever:0,markSeq:0,
-      bends:t.coudes.map(b=>({s0:b.s0,a:b.a,th:b.th})),cur:null,marks:[],measures:[],mref:{type:'A',id:null,dir:1}});
-    render(); sync(); fitView(true);
-    note(`Tube du montage chargé : ${t.coudes.length} coude${t.coudes.length>1?'s':''}, ${fmtIn(t.longueur)}. Modifie-le, puis « Poser dans le montage ».`);
+    const t=m.tube;
+    chargerTube(t,`Tube du montage chargé : ${t.coudes.length} coude${t.coudes.length>1?'s':''}, ${fmtIn(t.longueur)}. Modifie-le, puis « Poser dans le montage ».`);
   }
   if(m.type==='conduits3d:longueur' && !present){ $('len').value=m.longueur; note(m.message||'Choisis la longueur du tube, puis insère-le.'); }
 });
