@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="fr"><head>
 <meta charset="utf-8">
-<meta name="version" content="v13">
+<meta name="version" content="v14">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
 <title>Simulateur de cintreuse 400 – 3D</title>
 <meta name="description" content="Simulateur de cintreuse à levier en 3D pour les étudiants en électromécanique.">
@@ -651,10 +651,12 @@ shoe.add(extrude(shapeFrom([['M',-13,-15],['L',84,-15],['L',86,-50],['C',86.5,-5
   shoe.add(canvasPlane(1.7,0.7,(u0+u1)/2,0.3,0.403,(g,k,c)=>{
     const X=u=>(u-((u0+u1)/2-0.85))*k, Y=w=>(0.65-w)*k;
     g.strokeStyle='#d4d8dc'; g.lineWidth=0.014*k;
-    for(const u of [0,19,35.4,59]){g.beginPath(); g.moveTo(X(u/S2),Y(0.005)); g.lineTo(X(u/S2),Y(w-0.005)); g.stroke();}
+    // repères 45 et 90 = sommet du coude (R·tan(θ/2) du 0) : une marque alignée dessus tombe au sommet
+    const U45=59*Math.tan(22.5*DEG);
+    for(const u of [0,U45,35.4,59]){g.beginPath(); g.moveTo(X(u/S2),Y(0.005)); g.lineTo(X(u/S2),Y(w-0.005)); g.stroke();}
     g.strokeStyle='#9aa0a6'; g.lineWidth=0.012*k; g.beginPath(); g.moveTo(X(u0),Y(w-0.012)); g.lineTo(X(u1),Y(w-0.012)); g.stroke();
     g.fillStyle='#3a3d41'; g.font=`${0.13*k}px Arial`; g.textAlign='center'; g.textBaseline='middle';
-    [['0',0],['45',19],['R',35.4],['90',59.5]].forEach(([t,u])=>g.fillText(t,X(u/S2),Y(0.33)));
+    [['0',0],['45',U45],['R',35.4],['90',59.5]].forEach(([t,u])=>g.fillText(t,X(u/S2),Y(0.33)));
   }));
   shoe.add(cylZ(28/S2,40/S2,0.08,-0.41,0.41,MAT.insert)); }
 // matériaux propres au sabot pour pouvoir le rendre semi-transparent pendant qu'on place le tube

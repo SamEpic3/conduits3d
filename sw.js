@@ -1,6 +1,6 @@
 // Service worker : garde l'app en cache pour qu'elle s'ouvre sans Internet.
 // Change VERSION à chaque mise à jour du site pour que les appareils récupèrent la nouvelle version.
-const VERSION = 'conduits3d-v37';
+const VERSION = 'conduits3d-v38';
 const FILES = ['./', './index.html', './cintreuse.html', './manifest.webmanifest', './icons/icone-192.png', './icons/icone-512.png', './icons/icone.svg', './icons/icone-masquable-512.png', './icons/apple-touch-icon.png'];
 
 self.addEventListener('install', e => {
